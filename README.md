@@ -40,14 +40,6 @@ Verify the installation:
 python -m django --version
 ```
 
-## Creating a Django Project
-To start a new Django project, run:
-```sh
-django-admin startproject myproject
-```
-
-Replace `myproject` with your desired project name.
-
 ## Running the Django Server
 Navigate to your project directory:
 ```sh
@@ -63,6 +55,28 @@ Your Django project should now be accessible at [http://127.0.0.1:8000/](http://
 To exit the virtual environment, simply run:
 ```sh
 deactivate
+```
+## Running with Docker
+
+### Prerequisites
+- Docker and Docker Compose installed on your system
+
+### Starting the Application
+Run the following command:
+```sh
+./docker-start.sh
+```
+Or manually with:
+```sh
+docker-compose up --build
+```
+Once running, the application will be available at:
+- http://localhost:8000
+
+### Stopping the Application
+Press ```Ctrl+C``` in the terminal where docker-compose is running, or run:
+```sh
+docker-compose down
 ```
 
 ## Additional Dependencies
