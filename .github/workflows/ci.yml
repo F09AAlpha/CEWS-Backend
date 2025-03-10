@@ -64,11 +64,29 @@ jobs:
         run: echo "Integration tests will be implemented later."
 
   notify:
+    name: Notify on Failure
+    needs: build
     if: always()
     runs-on: ubuntu-latest
+
     steps:
-      - name: Send GitHub Actions notification
+      - name: Check Workflow Status
         run: |
-          if [ "$GITHUB_JOB" != "success" ]; then
-            echo "Tests failed! Please check the workflow logs."
+          if [[ "${{ job.status }}" != "success" ]]; then
+            echo "CI/CD pipeline failed. Sending notification..."
+            echo "failure"
+          else
+            echo "success"
           fi
+
+      - name: Send GitHub Notification on Failure
+        if: ${{ failure() }}  # Only runs if the workflow has failed
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: ${{ github.event.pull_request.number }},
+              owner: '${{ github.repository_owner }}',
+              repo: '${{ github.event.repository.name }}',
+              body: 'ERROR: Django CI/CD pipeline failed. Please check the logs and fix any issues.'
+            })
