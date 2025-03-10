@@ -19,25 +19,30 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - name: Build Docker image
-        run: docker build -t django-app .
+        run: docker build -t django-app:latest .
 
   lint:
     runs-on: ubuntu-latest
+    needs: build
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Run flake8 linting
+      - name: Run flake8 linting inside container
         run: |
-          docker run --rm django-app flake8 .
+          docker run --rm django-app:latest flake8 .
 
   test:
     runs-on: ubuntu-latest
+    needs: build
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Run unit tests
+      - name: Install docker-compose
+        run: sudo apt-get update && sudo apt-get install -y docker-compose
+
+      - name: Run unit tests inside container
         run: |
           docker-compose up -d
           docker-compose exec -T web python manage.py test
@@ -45,24 +50,17 @@ jobs:
 
   integration-tests:
     runs-on: ubuntu-latest
+    needs: test
     steps:
-      - name: Run Integration Tests
+      - name: Placeholder for integration tests
         run: echo "Integration tests will be implemented later."
 
   notify:
-    name: Notify on Failure
-    needs: build
-    if: failure()
+    if: always()
     runs-on: ubuntu-latest
-
     steps:
-      - name: Send GitHub Notification
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: ${{ github.event.pull_request.number }},
-              owner: '${{ github.repository_owner }}',
-              repo: '${{ github.event.repository.name }}',
-              body: 'ERROR: Django CI/CD pipeline failed. Please check the logs and fix any issues.'
-            })
+      - name: Send GitHub Actions notification
+        run: |
+          if [ "$GITHUB_JOB" != "success" ]; then
+            echo "Tests failed! Please check the workflow logs."
+          fi
