@@ -9,6 +9,25 @@ on:
       - main
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8
+
+      - name: Run flake8 linting
+        run: flake8 .
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -20,17 +39,6 @@ jobs:
 
       - name: Build Docker image
         run: docker build -t django-app:latest .
-
-  lint:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Run flake8 linting inside container
-        run: |
-          docker run --rm django-app:latest flake8 .
 
   test:
     runs-on: ubuntu-latest
@@ -56,11 +64,19 @@ jobs:
         run: echo "Integration tests will be implemented later."
 
   notify:
-    if: always()
+    name: Notify on Failure
+    needs: build
+    if: failure()
     runs-on: ubuntu-latest
+
     steps:
-      - name: Send GitHub Actions notification
-        run: |
-          if [ "$GITHUB_JOB" != "success" ]; then
-            echo "Tests failed! Please check the workflow logs."
-          fi
+      - name: Send GitHub Notification
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: ${{ github.event.pull_request.number }},
+              owner: '${{ github.repository_owner }}',
+              repo: '${{ github.event.repository.name }}',
+              body: 'ERROR: Django CI/CD pipeline failed. Please check the logs and fix any issues.'
+            })
