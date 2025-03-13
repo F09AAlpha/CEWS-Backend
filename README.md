@@ -79,6 +79,35 @@ Press ```Ctrl+C``` in the terminal where docker-compose is running, or run:
 docker-compose down
 ```
 
+### Database Setup
+Environment Configuration
+- Create a .env file in the project root using the .env.example as a template. Reach out to your scrum master for Database credentials
+
+## Running Database Migrations
+Update the .env file with your RDS credentials
+
+- After connecting to the database, run migrations to create the schema:
+With Docker:
+
+create migrations:
+```sh
+docker-compose run web python manage.py makemigrations
+```
+apply the migrations: 
+```sh
+docker-compose run web python manage.py migrate
+```
+Without Docker (with virtual environment activated):
+
+create migrations:
+```sh
+python manage.py makemigrations
+```
+apply the migrations: 
+```sh
+python manage.py migrate
+```
+
 ## Additional Dependencies
 To install additional dependencies, use:
 ```sh
