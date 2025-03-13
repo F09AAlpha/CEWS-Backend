@@ -34,6 +34,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # Create environment file for Docker build using secrets
+      - name: Create .env file for build
+        run: |
+          cat > .env << EOF
+          DB_NAME=${{ secrets.TEST_DB_NAME }}
+          DB_USER=${{ secrets.TEST_DB_USER }}
+          DB_PASSWORD=${{ secrets.TEST_DB_PASSWORD }}
+          DB_HOST= ${{secrets.TEST_DB_HOST}}
+          DB_PORT= ${{secrets.TEST_DB_PORT}}
+          EOF
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
@@ -43,6 +54,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     needs: build
+          
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -50,6 +62,23 @@ jobs:
       - name: Install docker-compose
         run: sudo apt-get update && sudo apt-get install -y docker-compose
 
+      # Create test environment file with secrets
+      - name: Create .env file for testing
+        run: |
+          cat > .env << EOF
+          DB_NAME=${{ secrets.TEST_DB_NAME }}
+          DB_USER=${{ secrets.TEST_DB_USER }}
+          DB_PASSWORD=${{ secrets.TEST_DB_PASSWORD }}
+          DB_HOST=${{ secrets.TEST_DB_HOST }}
+          DB_PORT=${{ secrets.TEST_DB_PORT }}
+          EOF
+
+      # Modify docker-compose.yml to use host network mode (temporary for CI)
+      - name: Set host network mode for CI
+        run: |
+          sed -i 's/# network_mode:/network_mode: "host"/' docker-compose.yml || echo "network_mode: \"host\"" >> docker-compose.yml
+
+      # Run with existing docker-compose file, but override the image
       - name: Run unit tests inside container
         run: |
           docker-compose up -d
