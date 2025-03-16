@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 
 class FinancialNewsFetchTest(TestCase):
-    
+
     def setUp(self):
         self.factory = APIRequestFactory()
         self.view = FetchFinancialNewsView.as_view()

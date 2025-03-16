@@ -13,7 +13,7 @@ API_KEY = "05e994f176cb4adf80b524a7fb2d00c8"  # Replace with your actual API key
 
 
 class FetchFinancialNewsView(APIView):
-    
+
     def get(self, request, *args, **kwargs):
         params = {
             "q": "forex OR exchange rate OR currency volatility",
@@ -37,7 +37,7 @@ class FetchFinancialNewsView(APIView):
         while len(total_articles) < 100:
             params["page"] = page
             response = requests.get(NEWS_API_URL, params=params)
-            
+
             if response.status_code == 200:
                 articles = response.json()["articles"]
                 total_articles.extend(articles)
