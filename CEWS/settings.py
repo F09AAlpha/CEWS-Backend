@@ -3,7 +3,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Load environment variables from the .env file
-# load_dotenv(dotenv_path=Path(__file__).resolve().parent / '.env')
+load_dotenv()
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -19,6 +19,8 @@ SECRET_KEY = 'django-insecure-=8a!@za^xz_ql^=l!4zw&p$h_z!m!nd_yqoi0jh8)ib21zer4h
 DEBUG = True
 
 ALLOWED_HOSTS = []  # Add your allowed hosts or IPs here
+
+ALPHA_VANTAGE_API_KEY = os.environ.get('ALPHA_VANTAGE_API_KEY')
 
 # Application definition
 
@@ -72,27 +74,16 @@ WSGI_APPLICATION = 'CEWS.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': os.environ.get('DB_NAME'),
-#         'USER': os.environ.get('DB_USER'),
-#         'PASSWORD': os.environ.get('DB_PASSWORD'),
-#         'HOST': os.environ.get('DB_HOST'),
-#         'PORT': os.environ.get('DB_PORT'),
-#     }
-# }
-
-# Database
-# https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',  # Use SQLite
-        'NAME': BASE_DIR / 'db.sqlite3',  # Path to the SQLite file in your project directory
-    }
-}
-
+   'default': {
+         'ENGINE': 'django.db.backends.postgresql',
+         'NAME': os.environ.get('DB_NAME'),
+         'USER': os.environ.get('DB_USER'),
+         'PASSWORD': os.environ.get('DB_PASSWORD'),
+         'HOST': os.environ.get('DB_HOST'),
+         'PORT': os.environ.get('DB_PORT'),
+     }
+ }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
