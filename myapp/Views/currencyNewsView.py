@@ -3,25 +3,25 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import generics
 from django.utils.dateparse import parse_datetime
-from myapp.Models.financialNewsModel import FinancialNews
-from myapp.Serializers.financialNewsSerializer import FinancialNewsSerializer
+from myapp.Models.currencyNewsModel import CurrencyNews
+from myapp.Serializers.currencyNewsSerializer import CurrencyNewsSerializer
 from datetime import datetime, timedelta
+
 
 # External API URL (Example: NewsAPI)
 NEWS_API_URL = "https://newsapi.org/v2/everything"
-API_KEY = "05e994f176cb4adf80b524a7fb2d00c8"  # Replace with your actual API key
+API_KEY = "60aa3709623a434790238c871369a241"  # Replace with your actual API key
 
+class FetchCurrencyNewsView(APIView):
 
-class FetchFinancialNewsView(APIView):
-
-    def get(self, request, *args, **kwargs):
+    def get(self, request, currency_code, *args, **kwargs):
         today = datetime.today()
         one_month_ago = today - timedelta(days=28)
         from_date = one_month_ago.strftime("%Y-%m-%d")
         to_date = today.strftime("%Y-%m-%d")
 
         params = {
-            "q": "forex OR exchange rate OR currency volatility",
+            "q": f"{currency_code} OR forex OR exchange rate OR currency volatility",
             "from": from_date,
             "to": to_date,
             "sortBy": "relevancy",
@@ -59,8 +59,8 @@ class FetchFinancialNewsView(APIView):
         # Store articles in the database if they don't already exist
         stored_news = []
         for article in total_articles[:100]:  # Ensure we only store up to 100 articles
-            if not FinancialNews.objects.filter(url=article["url"]).exists():  # Avoid duplicates
-                news = FinancialNews.objects.create(
+            if not CurrencyNews.objects.filter(url=article["url"]).exists():  # Avoid duplicates
+                news = CurrencyNews.objects.create(
                     title=article["title"],
                     source=article["source"]["name"],
                     url=article["url"],
@@ -69,11 +69,10 @@ class FetchFinancialNewsView(APIView):
                 stored_news.append(news)
 
         return Response(
-            {"message": "News data fetched and stored", "news_count": len(stored_news)},
+            {"message": "Currency news data fetched and stored", "news_count": len(stored_news)},
             status=201
         )
 
-
-class FinancialNewsListView(generics.ListAPIView):
-    queryset = FinancialNews.objects.all().order_by("-published_at")  # Order by published date
-    serializer_class = FinancialNewsSerializer
+class CurrencyNewsListView(generics.ListAPIView):
+    queryset = CurrencyNews.objects.all().order_by("-published_at")  # Order by published date
+    serializer_class = CurrencyNewsSerializer

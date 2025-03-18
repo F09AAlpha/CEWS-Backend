@@ -1,6 +1,6 @@
 from django.db import models
 
-class FinancialNews(models.Model):
+class CurrencyNews(models.Model):
     title = models.CharField(max_length=255)
     source = models.CharField(max_length=100)
     url = models.URLField(unique=True)
