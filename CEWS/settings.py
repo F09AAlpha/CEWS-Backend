@@ -3,7 +3,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Load environment variables from the .env file
-# load_dotenv(dotenv_path=Path(__file__).resolve().parent / '.env')
+load_dotenv(dotenv_path=Path(__file__).resolve().parent / '.env')
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -67,6 +67,8 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'CEWS.wsgi.application'
+
+ALPHA_VANTAGE_API_KEY = os.environ.get('ALPHA_VANTAGE_API_KEY')
 
 
 # Database
