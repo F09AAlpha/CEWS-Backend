@@ -20,6 +20,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = []  # Add your allowed hosts or IPs here
 
+ALPHA_VANTAGE_API_KEY = os.environ.get('ALPHA_VANTAGE_API_KEY')
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -82,8 +84,6 @@ DATABASES = {
          'PORT': os.environ.get('DB_PORT'),
      }
  }
-
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
