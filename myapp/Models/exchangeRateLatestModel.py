@@ -1,6 +1,7 @@
 from django.db import models
 import uuid
 
+
 class CurrencyEvent(models.Model):
     """Model for storing currency exchange rate events"""
     event_id = models.CharField(max_length=50, primary_key=True)
@@ -10,14 +11,14 @@ class CurrencyEvent(models.Model):
     timestamp = models.DateTimeField()
     source = models.CharField(max_length=50)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['-timestamp']
         indexes = [
             models.Index(fields=['base', 'target']),
             models.Index(fields=['timestamp']),
         ]
-    
+
     @staticmethod
     def generate_event_id(base, target):
         """Generate a unique event ID for currency events"""

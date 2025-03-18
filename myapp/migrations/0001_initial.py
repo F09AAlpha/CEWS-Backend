@@ -14,7 +14,17 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='FinancialNews',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name=(
+                            'ID'
+                        ),
+                    )
+                ),
                 ('title', models.CharField(max_length=255)),
                 ('source', models.CharField(max_length=100)),
                 ('url', models.URLField(unique=True)),
@@ -27,7 +37,10 @@ class Migration(migrations.Migration):
             fields=[
                 ('event_id', models.CharField(max_length=50, primary_key=True, serialize=False)),
                 ('base', models.CharField(max_length=10)),
-                ('target', models.CharField(max_length=10)),
+                (
+                    'target',
+                    models.CharField(max_length=10)
+                ),
                 ('rate', models.DecimalField(decimal_places=10, max_digits=20)),
                 ('timestamp', models.DateTimeField()),
                 ('source', models.CharField(max_length=50)),
@@ -35,7 +48,16 @@ class Migration(migrations.Migration):
             ],
             options={
                 'ordering': ['-timestamp'],
-                'indexes': [models.Index(fields=['base', 'target'], name='myapp_curre_base_7993a7_idx'), models.Index(fields=['timestamp'], name='myapp_curre_timesta_a7cd3f_idx')],
+                'indexes': [
+                    models.Index(
+                        fields=['base', 'target'],
+                        name='myapp_curre_base_7993a7_idx'
+                    ),
+                    models.Index(
+                        fields=['timestamp'],
+                        name='myapp_curre_timesta_a7cd3f_idx'
+                    ),
+                ],
             },
         ),
     ]
