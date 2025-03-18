@@ -8,21 +8,22 @@ from dotenv import load_dotenv
 # Load environment variables from the .env file
 load_dotenv()
 
-# External API URL (Example: NewsAPI)
-HISTORICAL_RATES_URL = "https://www.alphavantage.co/query?function=FX_MONTHLY&from_symbol=EUR&to_symbol=USD&apikey=demo"
 
 class FetchHistoricalCurrencyExchangeRates(APIView):
 
     def get(self, request, from_currency, to_currency, *args, **kwargs):
-        API_URL = f"https://www.alphavantage.co/query?function=FX_MONTHLY&from_symbol={from_currency}&to_symbol={to_currency}&apikey={os.environ.get('ALPHA_VANTAGE_API_KEY')}"
+        API_URL = (
+            f"https://www.alphavantage.co/query?function=FX_MONTHLY"
+            f"&from_symbol={from_currency}"
+            f"&to_symbol={to_currency}"
+            f"&apikey={os.environ.get('ALPHA_VANTAGE_API_KEY')}"
+        )
+
         try:
             response = requests.get(API_URL)
-        except:
-            return Response(
-                    {"error": f"Failed to fetch historical exchange rates: {response.status_code}, {response.json()}"},
-                    status=response.status_code
-                )
-            
+        except requests.exceptions.RequestException as e:
+            return Response({"error": str(e)}, status=500)
+
         data = response.json()
         time_series = data.get("Time Series FX (Monthly)", {})
 
@@ -33,7 +34,7 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
         with connection.cursor() as cursor:
             cursor.execute(f"""
                 SELECT EXISTS (
-                    SELECT FROM information_schema.tables 
+                    SELECT FROM information_schema.tables
                     WHERE table_name = '{table_name}'
                 )
             """)
@@ -73,6 +74,5 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
                         INSERT INTO {table_name} (date, open, high, low, close)
                         VALUES (%s, %s, %s, %s, %s)
                     """, [date, open_rate, high_rate, low_rate, close_rate])
-                
 
         return Response({"message": "Data fetched and stored successfully"}, status=201)
