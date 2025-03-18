@@ -3,7 +3,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Load environment variables from the .env file
-# load_dotenv(dotenv_path=Path(__file__).resolve().parent / '.env')
+load_dotenv()
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -19,6 +19,8 @@ SECRET_KEY = 'django-insecure-=8a!@za^xz_ql^=l!4zw&p$h_z!m!nd_yqoi0jh8)ib21zer4h
 DEBUG = True
 
 ALLOWED_HOSTS = []  # Add your allowed hosts or IPs here
+
+ALPHA_VANTAGE_API_KEY = os.environ.get('ALPHA_VANTAGE_API_KEY')
 
 # Application definition
 
@@ -82,8 +84,6 @@ DATABASES = {
          'PORT': os.environ.get('DB_PORT'),
      }
  }
-
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
