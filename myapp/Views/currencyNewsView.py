@@ -76,3 +76,4 @@ class FetchCurrencyNewsView(APIView):
 class CurrencyNewsListView(generics.ListAPIView):
     queryset = CurrencyNews.objects.all().order_by("-published_at")  # Order by published date
     serializer_class = CurrencyNewsSerializer
+    
