@@ -1,3 +1,3 @@
 [flake8]
 exclude = venv, CEWS, migrations, __pycache__
-max-line-length = 112
+max-line-length = 128
