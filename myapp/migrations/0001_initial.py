@@ -60,4 +60,40 @@ class Migration(migrations.Migration):
                 ],
             },
         ),
+        
+        # Annual Economic Indicators Table
+        migrations.CreateModel(
+            name='AnnualEconomicIndicators',
+            fields=[
+                ('id', models.AutoField(primary_key=True)),
+                ('date', models.DateField(unique=True)),
+                ('real_gdp', models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)),
+                ('inflation', models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)),
+            ],
+            options={
+                'ordering': ['-date'],
+                'indexes': [
+                    models.Index(fields=['date'], name='annual_indicator_date_idx'),
+                ],
+            },
+        ),
+        
+        # Monthly Economic Indicators Table
+        migrations.CreateModel(
+            name='MonthlyEconomicIndicator',
+            fields=[
+                ('id', models.AutoField(primary_key=True)),
+                ('date', models.DateField(unique=True)),
+                ('cpi', models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)),
+                ('unemployment_rate', models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)),
+                ('federal_funds_rate', models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)),
+                ('treasury_yield', models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)),
+            ],
+            options={
+                'ordering': ['-date'],
+                'indexes': [
+                    models.Index(fields=['date'], name='monthly_indicator_date_idx'),
+                ],
+            },
+        ),
     ]
