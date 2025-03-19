@@ -7,10 +7,10 @@ from myapp.Models.currencyNewsModel import CurrencyNews
 from myapp.Serializers.currencyNewsSerializer import CurrencyNewsSerializer
 from datetime import datetime, timedelta
 
-
 # External API URL (Example: NewsAPI)
 NEWS_API_URL = "https://newsapi.org/v2/everything"
 API_KEY = "60aa3709623a434790238c871369a241"  # Replace with your actual API key
+
 
 class FetchCurrencyNewsView(APIView):
 
@@ -73,7 +73,7 @@ class FetchCurrencyNewsView(APIView):
             status=201
         )
 
+
 class CurrencyNewsListView(generics.ListAPIView):
     queryset = CurrencyNews.objects.all().order_by("-published_at")  # Order by published date
     serializer_class = CurrencyNewsSerializer
-    

@@ -6,4 +6,3 @@ class CurrencyNewsSerializer(serializers.ModelSerializer):
     class Meta:
         model = CurrencyNews
         fields = ['id', 'title', 'source', 'url', 'published_at']
-
