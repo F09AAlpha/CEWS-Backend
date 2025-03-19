@@ -12,6 +12,6 @@ urlpatterns = [
     path('currency-news/', CurrencyNewsListView.as_view(), name='currency-news-list'),
     path('v1/currency/rates/<str:base>/<str:target>/', CurrencyRateView.as_view(), name='currency-rate'),
     path('v1/currency/rates/<str:from_currency>/<str:to_currency>/historical',
-        FetchHistoricalCurrencyExchangeRates.as_view(),
-        name='fetch-historical-exchange-rates'),
+    FetchHistoricalCurrencyExchangeRates.as_view(),
+    name='fetch-historical-exchange-rates'),
 ]
