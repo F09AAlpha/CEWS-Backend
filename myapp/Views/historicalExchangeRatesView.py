@@ -44,9 +44,11 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
             if table_exists:
                 # Get the latest date from the table
                 cursor.execute(f"SELECT MAX(date) FROM {table_name}")
+                print(cursor)
                 latest_date = cursor.fetchone()[0]
+                print(latest_date)
                 if not (time_series.keys()) or (max(time_series.keys())) <= latest_date.isoformat():
-                    return Response({"message": "Data fetched but no new data available"}, status=200)
+                    return Response({"Message": "Data fetched but no new data available", "Result": data}, status=200)
 
             # Create table if it doesn't exist
             if not table_exists:
@@ -75,4 +77,4 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
                         VALUES (%s, %s, %s, %s, %s)
                     """, [date, open_rate, high_rate, low_rate, close_rate])
 
-        return Response({"message": "Data fetched and stored successfully"}, status=201)
+        return Response({"Message": "Data fetched and stored successfully", "Result": data}, status=201)
