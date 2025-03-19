@@ -1,21 +1,21 @@
 import os
 import requests
-from django.db import connection
+from django.db import connection, transaction
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from dotenv import load_dotenv
+import psycopg2.extras
 
 # Load environment variables from the .env file
 load_dotenv()
-
 
 class FetchHistoricalCurrencyExchangeRates(APIView):
 
     def get(self, request, from_currency, to_currency, *args, **kwargs):
         API_URL = (
-            f"https://www.alphavantage.co/query?function=FX_MONTHLY"
+            f"https://www.alphavantage.co/query?function=FX_DAILY"
             f"&from_symbol={from_currency}"
-            f"&to_symbol={to_currency}"
+            f"&to_symbol={to_currency}&outputsize=full&"
             f"&apikey={os.environ.get('ALPHA_VANTAGE_API_KEY')}"
         )
 
@@ -25,7 +25,7 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
             return Response({"error": str(e)}, status=500)
 
         data = response.json()
-        time_series = data.get("Time Series FX (Monthly)", {})
+        time_series = data.get("Time Series FX (Daily)", {})
 
         # Generate a table name based on currency pair
         table_name = f"historical_exchange_rate_{from_currency.lower()}_{to_currency.lower()}"
@@ -44,9 +44,7 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
             if table_exists:
                 # Get the latest date from the table
                 cursor.execute(f"SELECT MAX(date) FROM {table_name}")
-                print(cursor)
                 latest_date = cursor.fetchone()[0]
-                print(latest_date)
                 if not (time_series.keys()) or (max(time_series.keys())) <= latest_date.isoformat():
                     return Response({"Message": "Data fetched but no new data available",
                                     "Result": data},
@@ -64,7 +62,31 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
                         close DECIMAL(10, 5)
                     )
                 """)
+            
+            # Prepare data for batch insert
+            batch_data = [
+                (date_str, rate_info.get("1. open"), rate_info.get("2. high"),
+                 rate_info.get("3. low"), rate_info.get("4. close"))
+                for date_str, rate_info in time_series.items()
+                if latest_date is None or date_str > latest_date.isoformat()
+            ]
 
+            # Batch insert data
+            with transaction.atomic():
+                psycopg2.extras.execute_values(
+                    cursor,
+                    f"""
+                    INSERT INTO {table_name} (date, open, high, low, close)
+                    VALUES %s
+                    ON CONFLICT (date) DO NOTHING
+                    """,
+                    batch_data
+                )
+
+        return Response({"Message": "Data fetched and stored successfully", "Result": data}, status=201)
+'''
+            count = 0
+            
             # Insert data into the table
             for date_str, rate_info in time_series.items():
                 date = date_str  # Convert to a date object if necessary
@@ -78,5 +100,11 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
                         INSERT INTO {table_name} (date, open, high, low, close)
                         VALUES (%s, %s, %s, %s, %s)
                     """, [date, open_rate, high_rate, low_rate, close_rate])
+                    
+                    count = count + 1
+                    print(count)
+                
+                if count == 1500:
+                    return Response({"Message": "Past 5 years data fetched and stored successfully", "Result": data}, status=201)
 
-        return Response({"Message": "Data fetched and stored successfully", "Result": data}, status=201)
+        return Response({"Message": "Data fetched and stored successfully", "Result": data}, status=201)'''
