@@ -3,6 +3,7 @@ from myapp.Views.financialNewsView import FetchFinancialNewsView, FinancialNewsL
 from myapp.Views.currencyNewsView import CurrencyNewsListView, FetchCurrencyNewsView
 from myapp.Views.exchangeRateLatestViews import CurrencyRateView
 from myapp.Views.historicalExchangeRatesView import FetchHistoricalCurrencyExchangeRates
+from myapp.Views.volatilityView import VolatilityAnalysisView
 
 
 urlpatterns = [
@@ -15,5 +16,10 @@ urlpatterns = [
         'v1/currency/rates/<str:from_currency>/<str:to_currency>/historical',
         FetchHistoricalCurrencyExchangeRates.as_view(),
         name='fetch-historical-exchange-rates'
+    ),
+    path(
+        'v1/analytics/volatility/<str:base>/<str:target>/',
+        VolatilityAnalysisView.as_view(),
+        name='volatility_analysis',
     ),
 ]
