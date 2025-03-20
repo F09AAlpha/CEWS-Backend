@@ -25,9 +25,9 @@ class MonthlyEconomicIndicator(models.Model):
     id = models.AutoField(primary_key=True)
     date = models.DateField(unique=True)
     cpi = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
-    unemployment_rate = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
-    federal_funds_rate = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
-    treasury_yield = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
+    unemployment_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    federal_funds_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    treasury_yield = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
     class Meta:
         ordering = ["-date"]
