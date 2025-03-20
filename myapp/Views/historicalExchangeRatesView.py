@@ -84,7 +84,7 @@ def saveGraph(from_currency, to_currency, table_name):
 
 class FetchHistoricalCurrencyExchangeRates(APIView):
 
-    def get(self, request, from_currency, to_currency, *args, **kwargs):
+    def post(self, request, from_currency, to_currency, *args, **kwargs):
         API_URL = (
             f"https://www.alphavantage.co/query?function=FX_DAILY"
             f"&from_symbol={from_currency}"
