@@ -1,9 +1,22 @@
-venv
-.pytest_cache
+# Ignore virtual environment
+venv/
+
+# Ignore pytest cache
+.pytest_cache/
+
+# Ignore environment variables
 .env
+
+# Ignore the SQLite database
 db.sqlite3
+
+# Ignore Python bytecode files and pycache directories
 __pycache__
+*.pyc
+*.pyo
+*.pyd
+
 # Ignore log files
 *.log
 currency_collector.log
-logs/
+logs//
