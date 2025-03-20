@@ -1,7 +1,6 @@
+from datetime import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
-import requests
 from rest_framework import status
 import requests
 from django.utils.dateparse import parse_datetime
@@ -88,13 +87,14 @@ class CurrencyNewsListView(generics.ListAPIView):
         # Apply filters if provided
         if currency:
             queryset = queryset.filter(currency=currency)
-   
+
         if sentiment:
             try:
                 sentiment_value = float(sentiment)
                 # Filter sentiment_score within ±0.5 of the entered value
-                queryset = queryset.filter(sentiment_score__gte=sentiment_value - 0.5,
-                                          sentiment_score__lte=sentiment_value + 0.5)
+                queryset = queryset.filter(
+                    sentiment_score__gte=sentiment_value - 0.5, sentiment_score__lte=sentiment_value + 0.5
+                )
             except ValueError:
                 # Handle the case where sentiment is not a valid float
                 print(f"Invalid sentiment value: {sentiment}")  # Debugging
@@ -113,4 +113,3 @@ class CurrencyNewsListView(generics.ListAPIView):
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
