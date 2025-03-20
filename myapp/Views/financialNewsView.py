@@ -69,6 +69,6 @@ class FetchFinancialNewsView(APIView):
             )
 
 
-class financialNewsListView(generics.ListAPIView):
+class FinancialNewsListView(generics.ListAPIView):
     queryset = FinancialNews.objects.all().order_by("-date")  # Order by date
     serializer_class = FinancialNewsSerializer

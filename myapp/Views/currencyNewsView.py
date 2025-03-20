@@ -70,6 +70,6 @@ class FetchCurrencyNewsView(APIView):
             )
 
 
-class currencyNewsListView(generics.ListAPIView):
+class CurrencyNewsListView(generics.ListAPIView):
     queryset = CurrencyNews.objects.all().order_by("-last_refreshed")  # Order by date
     serializer_class = CurrencyNewsSerializer
