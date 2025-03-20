@@ -7,3 +7,4 @@ __pycache__
 *.log
 currency_collector.log
 logs/
+Graphs
