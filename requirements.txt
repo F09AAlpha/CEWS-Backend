@@ -9,7 +9,7 @@ flake8==7.1.2
 idna==3.10
 iniconfig==2.0.0
 mccabe==0.7.0
-matplotlib: 3.10.1
+matplotlib== 3.10.1
 numpy==2.2.4
 packaging==24.2
 pandas==2.2.3
