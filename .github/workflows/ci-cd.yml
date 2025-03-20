@@ -51,6 +51,18 @@ jobs:
       - name: Build Docker image
         run: docker build -t django-app:latest .
 
+      # Pushing Docker Image to Amazon ECR
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          region: us-east-1
+
+      - name: Tag Docker image
+        run: docker tag django-app:latest ${{ vars.ECR_REPO }}
+          
+      - name: Push Docker image to ECR
+        run: docker push ${{ vars.ECR_REPO }}
+
   test:
     runs-on: ubuntu-latest
     needs: build
