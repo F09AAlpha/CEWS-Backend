@@ -63,8 +63,7 @@ class FetchFinancialNewsView(APIView):
                 news = FinancialNews.objects.create(
                     title=article["title"],
                     source=article["source"]["name"],
-                    url=article["url"],
-                    published_at=parse_datetime(article["publishedAt"])  # Convert string to datetime object
+                    date=parse_datetime(article["publishedAt"])  # Convert string to datetime object
                 )
                 stored_news.append(news)
 
@@ -74,6 +73,6 @@ class FetchFinancialNewsView(APIView):
         )
 
 
-class FinancialNewsListView(generics.ListAPIView):
-    queryset = FinancialNews.objects.all().order_by("-published_at")  # Order by published date
+class financialNewsListView(generics.ListAPIView):
+    queryset = FinancialNews.objects.all().order_by("-date")  # Order by published date
     serializer_class = FinancialNewsSerializer
