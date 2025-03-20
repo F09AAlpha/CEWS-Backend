@@ -1,79 +1,71 @@
-import requests
-from rest_framework.response import Response
+from numpy import generic
 from rest_framework.views import APIView
-from rest_framework import generics
+from rest_framework.response import Response
+from rest_framework import status
+import requests
+from django.utils import timezone
 from django.utils.dateparse import parse_datetime
-from myapp.Models.financialNewsModel import FinancialNews
+from myapp.Models.financialNewsModel import FinancialNewsAlphaV
 from myapp.Serializers.financialNewsSerializer import FinancialNewsSerializer
-from datetime import datetime, timedelta
 
-# External API URL (Example: NewsAPI)
-NEWS_API_URL = "https://newsapi.org/v2/everything"
-API_KEY = "05e994f176cb4adf80b524a7fb2d00c8"  # Replace with your actual API key
+
+# Alpha Vantage API configuration
+ALPHA_VANTAGE_API_KEY = "VCQD8OHRMOLM1H10"  # Replace with your API key
+ALPHA_VANTAGE_URL = "https://www.alphavantage.co/query"
 
 
 class FetchFinancialNewsView(APIView):
-
-    def get(self, request, *args, **kwargs):
-        today = datetime.today()
-        one_month_ago = today - timedelta(days=28)
-        from_date = one_month_ago.strftime("%Y-%m-%d")
-        to_date = today.strftime("%Y-%m-%d")
+    def post(self, request, *args, **kwargs):
+        symbol = request.data.get("symbol", "AAPL")  # Default: USD
 
         params = {
-            "q": "forex OR exchange rate OR currency volatility",
-            "from": from_date,
-            "to": to_date,
-            "sortBy": "relevancy",
-            "language": "en",
-            "domains": (
-                "forbes.com,bloomberg.com,wsj.com,ft.com,reuters.com,marketwatch.com,cnbc.com,"
-                "investing.com,nytimes.com,bbc.com,msn.com,news.yahoo.com,cnn.com,independent.co.uk,"
-                "guardian.co.uk,wsj.com,abcnews.go.com,ft.com"
-            ),
-            "pageSize": 100,  # Limit to 100 results
-            "apiKey": API_KEY,
+            "function": "NEWS_SENTIMENT",
+            "topics": symbol,
+            "apikey": ALPHA_VANTAGE_API_KEY,
+            "sort": "LATEST",
+            "limit": 10
         }
 
-        page = 1
-        total_articles = []
+        response = requests.get(ALPHA_VANTAGE_URL, params=params)
 
-        # Fetch articles in pages until we have 100 articles or no more articles
-        while len(total_articles) < 100:
-            params["page"] = page
-            response = requests.get(NEWS_API_URL, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            news_data = data.get("feed", [])
 
-            if response.status_code == 200:
-                articles = response.json()["articles"]
-                total_articles.extend(articles)
+            if news_data:
+                stored_news = []
+                for article in news_data:
+                    publication_date = parse_datetime(article.get("time_published"))
+                    aware_publication_date = publication_date.replace(tzinfo=timezone.utc)
 
-                if len(articles) < 100:  # If less than 100 results, stop paginating
-                    break
-                page += 1
+                    if not FinancialNewsAlphaV.objects.filter(url=article.get("url")).exists():
+                        news_data = {
+                            "title": article.get("title"),
+                            "source": article.get("source"),
+                            "url": article.get("url"),
+                            "summary": article.get("summary"),
+                            "sentiment_score": float(article.get("overall_sentiment_score", 0)),
+                            "sentiment_label": article.get("overall_sentiment_label", "neutral"),
+                            "publication_date": aware_publication_date,
+                            "symbol": symbol
+                        }
+
+                        serializer = FinancialNewsSerializer(data=news_data)
+                        if serializer.is_valid():
+                            serializer.save()
+                            stored_news.append(serializer.data)
+
+                return Response(
+                    {"message": "Financial news data fetched and stored", "news": stored_news},
+                    status=status.HTTP_201_CREATED
+                )
             else:
                 return Response(
-                    {"error": f"Failed to fetch news: {response.status_code}, {response.json()}"},
-                    status=response.status_code
+                    {"error": "No financial news data found in the API response."},
+                    status=status.HTTP_404_NOT_FOUND,
                 )
-
-        # Store articles in the database if they don't already exist
-        stored_news = []
-        for article in total_articles[:100]:  # Ensure we only store up to 100 articles
-            if not FinancialNews.objects.filter(url=article["url"]).exists():  # Avoid duplicates
-                news = FinancialNews.objects.create(
-                    title=article["title"],
-                    source=article["source"]["name"],
-                    url=article["url"],
-                    published_at=parse_datetime(article["publishedAt"])  # Convert string to datetime object
-                )
-                stored_news.append(news)
-
-        return Response(
-            {"message": "News data fetched and stored", "news_count": len(stored_news)},
-            status=201
-        )
-
-
-class FinancialNewsListView(generics.ListAPIView):
-    queryset = FinancialNews.objects.all().order_by("-published_at")  # Order by published date
-    serializer_class = FinancialNewsSerializer
+        else:
+            return Response(
+                {"error": f"Failed to fetch financial news data from Alpha Vantage: {response.status_code}"},
+                status=response.status_code,
+            )
