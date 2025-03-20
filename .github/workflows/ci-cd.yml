@@ -1,0 +1,222 @@
+name: Django CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8
+
+      - name: Run flake8 linting
+        run: flake8 .
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Create environment file for Docker build using secrets
+      - name: Create .env file for build
+        run: |
+          cat > .env << EOF
+          DB_NAME=${{ secrets.TEST_DB_NAME }}
+          DB_USER=${{ secrets.TEST_DB_USER }}
+          DB_PASSWORD=${{ secrets.TEST_DB_PASSWORD }}
+          DB_HOST= ${{secrets.TEST_DB_HOST}}
+          DB_PORT= ${{secrets.TEST_DB_PORT}}
+          EOF
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: ubl-despatch-generator:latest
+          outputs: type=docker,dest=/tmp/ubl-despatch-image.tar
+      
+      - name: Upload Docker image as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubl-despatch-image
+          path: /tmp/ubl-despatch-image.tar
+          retention-days: 1
+
+
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+          
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install docker-compose
+        run: sudo apt-get update && sudo apt-get install -y docker-compose
+
+      # Create test environment file with secrets
+      - name: Create .env file for testing
+        run: |
+          cat > .env << EOF
+          DB_NAME=${{ secrets.TEST_DB_NAME }}
+          DB_USER=${{ secrets.TEST_DB_USER }}
+          DB_PASSWORD=${{ secrets.TEST_DB_PASSWORD }}
+          DB_HOST=${{ secrets.TEST_DB_HOST }}
+          DB_PORT=${{ secrets.TEST_DB_PORT }}
+          EOF
+
+      # Modify docker-compose.yml to use host network mode (temporary for CI)
+      - name: Set host network mode for CI
+        run: |
+          sed -i 's/# network_mode:/network_mode: "host"/' docker-compose.yml || echo "network_mode: \"host\"" >> docker-compose.yml
+
+      # Run with existing docker-compose file, but override the image
+      - name: Run unit tests inside container
+        run: |
+          docker-compose up -d
+          docker-compose exec -T web python manage.py test
+          docker-compose down
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Placeholder for integration tests
+        run: echo "Integration tests will be implemented later."
+
+  # ECR deployment job
+  deploy-to-ecr:
+    runs-on: ubuntu-latest
+    needs: [lint, build, test, integration-tests]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ubl-despatch-image
+          path: /tmp
+      
+      - name: Load Docker image
+        run: docker load --input /tmp/ubl-despatch-image.tar
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Tag and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker tag ubl-despatch-generator:latest $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker tag ubl-despatch-generator:latest $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "Successfully pushed image to ECR: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+    # ECS deployment job
+  deploy-to-ecs:
+    runs-on: ubuntu-latest
+    needs: deploy-to-ecr
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Download task definition
+        run: |
+          aws ecs describe-task-definition --task-definition ${{ secrets.ECS_TASK_DEFINITION }} \
+          --query taskDefinition > task-definition.json
+      
+      - name: Process task definition
+        run: |
+          # Remove problematic fields that cause registration issues
+          jq 'del(.taskDefinitionArn, .requiresAttributes, .compatibilities, .revision, .status, .registeredAt, .registeredBy, .enableFaultInjection)' task-definition.json > cleaned-task-definition.json
+          mv cleaned-task-definition.json task-definition.json
+      
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ secrets.CONTAINER_NAME }}
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}
+      
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ secrets.ECS_SERVICE }}
+          cluster: ${{ secrets.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+  notify:
+    name: Notify on Failure
+    needs: build
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check Workflow Status
+        run: |
+          if [[ "${{ job.status }}" != "success" ]]; then
+            echo "CI/CD pipeline failed. Sending notification..."
+            echo "failure"
+          else
+            echo "success"
+          fi
+
+      - name: Send GitHub Notification on Failure
+        if: ${{ failure() }}  # Only runs if the workflow has failed
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: ${{ github.event.pull_request.number }},
+              owner: '${{ github.repository_owner }}',
+              repo: '${{ github.event.repository.name }}',
+              body: 'ERROR: Django CI/CD pipeline failed. Please check the logs and fix any issues.'
+            })
