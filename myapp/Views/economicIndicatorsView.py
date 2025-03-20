@@ -46,6 +46,6 @@ class StoreMonthlyIndicatorsView(APIView):
         except Exception as e:
             logger.exception(f"Error storing monthly economic indicators: {str(e)}")
             return Response(
-                {"error": "Failed to store monthly economic indicators."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    {"error": "Failed to store monthly economic indicators."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
