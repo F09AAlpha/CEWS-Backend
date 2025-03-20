@@ -3,6 +3,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 import requests
+from rest_framework import status
+import requests
 from django.utils.dateparse import parse_datetime
 from myapp.Models.currencyNewsModel import CurrencyNewsAlphaV
 from myapp.Serializers.currencyNewsSerializer import CurrencyNewsSerializer
