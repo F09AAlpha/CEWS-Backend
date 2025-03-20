@@ -33,8 +33,14 @@ urlpatterns = [
     path('v1/economic/indicators/monthly/', StoreMonthlyIndicatorsView.as_view(), name='store-monthly-economic-indicators'),
     path('graph/<str:from_currency>/<str:to_currency>/last-week', GraphView_lastweek.as_view(), name='last-week-graph_view'),
     path('graph/<str:from_currency>/<str:to_currency>/last-month', GraphView_lastmonth.as_view(), name='last-month-graph_view'),
-    path('graph/<str:from_currency>/<str:to_currency>/last-6-months', GraphView_last6months.as_view(), name='last-6-months-graph_view'),
-    path('graph/<str:from_currency>/<str:to_currency>/last-year', GraphView_lastyear.as_view(), name='last-year-graph_view'),
-    path('graph/<str:from_currency>/<str:to_currency>/last-5-years', GraphView_last5years.as_view(), name='last-5-years-graph_view')
+    path('graph/<str:from_currency>/<str:to_currency>/last-6-months',
+         GraphView_last6months.as_view(),
+         name='last-6-months-graph_view'),
+    path('graph/<str:from_currency>/<str:to_currency>/last-year',
+         GraphView_lastyear.as_view(),
+         name='last-year-graph_view'),
+    path('graph/<str:from_currency>/<str:to_currency>/last-5-years',
+         GraphView_last5years.as_view(),
+         name='last-5-years-graph_view')
 
 ]

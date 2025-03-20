@@ -5,12 +5,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from dotenv import load_dotenv
 import psycopg2.extras
-import matplotlib.pyplot as plt
-from datetime import datetime, timedelta
-import matplotlib.dates as mdates
 
 # Load environment variables from the .env file
 load_dotenv()
+
 
 class FetchHistoricalCurrencyExchangeRates(APIView):
 

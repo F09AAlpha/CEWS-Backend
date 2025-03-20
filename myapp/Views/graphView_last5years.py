@@ -6,21 +6,22 @@ from datetime import datetime, timedelta
 import matplotlib.dates as mdates
 from django.db import connection
 
+
 class GraphView_last5years(View):
     def get(self, request, from_currency, to_currency):
         # Example: Fetch data for the last month
-        one_month_ago = datetime.now() - timedelta(days=(365*5))
+        five_years_ago = datetime.now() - timedelta(days=(365*5))
         table_name = f"historical_exchange_rate_{from_currency.lower()}_{to_currency.lower()}"
 
         with connection.cursor() as cursor:
             cursor.execute(f"""
                 SELECT date, close FROM {table_name}
                 WHERE date >= %s ORDER BY date
-            """, [one_month_ago])
+            """, [five_years_ago])
             rows = cursor.fetchall()
 
         if not rows:
-            return HttpResponse("No data available for the last month.", status=404)
+            return HttpResponse("No data available for the last 5 years.", status=404)
 
         # Prepare data for plotting
         dates = [row[0] for row in rows]
@@ -46,4 +47,3 @@ class GraphView_last5years(View):
 
         # Return the image as an HTTP response
         return HttpResponse(buf, content_type='image/png')
-

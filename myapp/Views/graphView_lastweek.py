@@ -6,17 +6,18 @@ from datetime import datetime, timedelta
 import matplotlib.dates as mdates
 from django.db import connection
 
+
 class GraphView_lastweek(View):
     def get(self, request, from_currency, to_currency):
         # Example: Fetch data for the last month
-        one_month_ago = datetime.now() - timedelta(days=8)
+        one_week_ago = datetime.now() - timedelta(days=8)
         table_name = f"historical_exchange_rate_{from_currency.lower()}_{to_currency.lower()}"
 
         with connection.cursor() as cursor:
             cursor.execute(f"""
                 SELECT date, close FROM {table_name}
                 WHERE date >= %s ORDER BY date
-            """, [one_month_ago])
+            """, [one_week_ago])
             rows = cursor.fetchall()
 
         if not rows:
@@ -46,4 +47,3 @@ class GraphView_lastweek(View):
 
         # Return the image as an HTTP response
         return HttpResponse(buf, content_type='image/png')
-

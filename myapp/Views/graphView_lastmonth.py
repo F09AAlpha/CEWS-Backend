@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import matplotlib.dates as mdates
 from django.db import connection
 
+
 class GraphView_lastmonth(View):
     def get(self, request, from_currency, to_currency):
         # Example: Fetch data for the last month
@@ -46,4 +47,3 @@ class GraphView_lastmonth(View):
 
         # Return the image as an HTTP response
         return HttpResponse(buf, content_type='image/png')
-
