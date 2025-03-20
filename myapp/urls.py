@@ -10,10 +10,10 @@ from myapp.Views.volatilityView import VolatilityAnalysisView
 
 urlpatterns = [
     path('', HealthCheckView.as_view(), name='health-check'),
-    path('fetch-financial-news/', FetchFinancialNewsView.as_view(), name='fetch-financial-news'),
-    path('financial-news/', FinancialNewsListView.as_view(), name='financial-news-list'),
-    path('currency/<str:currency_code>/', FetchCurrencyNewsView.as_view(), name='fetch-currency-news'),
-    path('currency-news/', CurrencyNewsListView.as_view(), name='currency-news-list'),
+    path('v1/fetch-financial-news/', FetchFinancialNewsView.as_view(), name='fetch-financial-news'),
+    path('v1/financial-news/', FinancialNewsListView.as_view(), name='financial-news-list'),
+    path('v1/currency/', FetchCurrencyNewsView.as_view(), name='fetch-currency-news'),
+    path('v1/currency-news/', CurrencyNewsListView.as_view(), name='currency-news-list'),
     path('v1/currency/rates/<str:base>/<str:target>/', CurrencyRateView.as_view(), name='currency-rate'),
     path(
         'v1/currency/rates/<str:from_currency>/<str:to_currency>/historical',
