@@ -1,5 +1,6 @@
 from django.db import models
 
+
 class FinancialNewsAlphaV(models.Model):
     title = models.CharField(max_length=255)  # Title of the news article
     source = models.CharField(max_length=100)  # Source of the news article

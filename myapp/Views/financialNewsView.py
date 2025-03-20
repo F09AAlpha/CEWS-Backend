@@ -1,8 +1,10 @@
 from numpy import generic
+import psycopg2
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 import requests
+from django.db import connection, transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from myapp.Models.financialNewsModel import FinancialNewsAlphaV
@@ -53,7 +55,7 @@ class FetchFinancialNewsView(APIView):
                         serializer = FinancialNewsSerializer(data=news_data)
                         if serializer.is_valid():
                             serializer.save()
-                            stored_news.append(serializer.data)
+                            stored_news.append(serializer.data)                  
 
                 return Response(
                     {"message": "Financial news data fetched and stored", "news": stored_news},

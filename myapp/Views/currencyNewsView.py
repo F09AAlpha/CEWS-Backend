@@ -1,4 +1,3 @@
-from datetime import *
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -20,7 +19,7 @@ class FetchCurrencyNewsView(APIView):
     def post(self, request, currency, *args, **kwargs):
         # Get the limit parameter from query parameters, default is 10
         limit = request.query_params.get("limit", 10)
-        
+
         params = {
             "function": "NEWS_SENTIMENT",
             "topics": currency,
@@ -76,20 +75,20 @@ class FetchCurrencyNewsView(APIView):
 
 class CurrencyNewsListView(generics.ListAPIView):
     serializer_class = CurrencyNewsSerializer
-    
+
     def get_queryset(self):
         # Get query parameters
         currency = self.request.query_params.get('currency')
         sentiment = self.request.query_params.get('sentiment_score')
         limit = self.request.query_params.get('limit', 10)  # Default to 100 if not specified
-        
+
         # Start with all objects
         queryset = CurrencyNewsAlphaV.objects.all().order_by('-publication_date')
 
         # Apply filters if provided
         if currency:
             queryset = queryset.filter(currency=currency)
-            
+   
         if sentiment:
             try:
                 sentiment_value = float(sentiment)
@@ -99,18 +98,19 @@ class CurrencyNewsListView(generics.ListAPIView):
             except ValueError:
                 # Handle the case where sentiment is not a valid float
                 print(f"Invalid sentiment value: {sentiment}")  # Debugging
-        
+
         # Debugging: Print the generated SQL query
         print(queryset.query)
-        
+
         # Limit results
         return queryset[:int(limit)]
-    
+
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
-        
+
         if not queryset:
             return Response([], status=status.HTTP_200_OK)
-            
+
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
