@@ -12,76 +12,6 @@ import matplotlib.dates as mdates
 # Load environment variables from the .env file
 load_dotenv()
 
-
-def saveGraph(from_currency, to_currency, table_name):
-    with connection.cursor() as cursor:
-        one_week_ago = datetime.now() - timedelta(days=8)
-        one_month_ago = datetime.now() - timedelta(days=30)
-        six_months_ago = datetime.now() - timedelta(days=181)
-        one_year_ago = datetime.now() - timedelta(days=366)
-        five_years_ago = datetime.now() - timedelta(days=(366*5))
-
-        graph_list = [one_week_ago, one_month_ago, six_months_ago, one_year_ago, five_years_ago]
-
-        for graph in graph_list:
-            cursor.execute(f"""
-                SELECT date, close FROM {table_name}
-                WHERE date >= %s ORDER BY date
-            """, [graph])
-            rows = cursor.fetchall()
-
-            if not rows:
-                print(f"No data available for {from_currency} to {to_currency} for the period starting {graph}")
-                continue
-
-            # Prepare data for plotting
-            dates = [row[0] for row in rows]
-            close_rates = [float(row[1]) for row in rows]
-
-            # Plot the data
-            plt.figure(figsize=(20, 5))
-            plt.plot(dates, close_rates, label='Close Rate')
-            plt.xlabel('Date')
-            plt.ylabel('Exchange Rate')
-
-            if graph == one_week_ago:
-                name = "Last_week"
-            elif graph == one_month_ago:
-                name = "Last_month"
-            elif graph == six_months_ago:
-                name = "Last_6_months"
-            elif graph == one_year_ago:
-                name = "Last_year"
-            elif graph == five_years_ago:
-                name = "Last_5_years"
-
-            plt.title(f'Exchange Rate: {from_currency} to {to_currency} {name}')
-            plt.xticks(rotation=90)
-            if name == "Last_5_years":
-                plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
-                plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=365))
-            elif name == "Last_year":
-                plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
-                plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=30))
-            else:
-                plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-                plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=1))
-            plt.tight_layout()
-            plt.legend()
-
-            # Ensure the directory exists
-            os.makedirs("myapp/Graphs", exist_ok=True)
-
-            # Save the plot to a file
-            file_path = f"myapp/Graphs/{from_currency}_to_{to_currency}_exchange_rate_{name}.png"
-            try:
-                plt.savefig(file_path)
-                plt.close()
-                print(f"Graph saved to {file_path}")
-            except Exception as e:
-                print(f"Failed to save graph: {e}")
-
-
 class FetchHistoricalCurrencyExchangeRates(APIView):
 
     def post(self, request, from_currency, to_currency, *args, **kwargs):
@@ -175,12 +105,6 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
                         """,
                         batch_data
                     )
-
-        # Generate graphs after data insertion
-        try:
-            saveGraph(from_currency, to_currency, table_name)
-        except Exception as e:
-            print(e)
 
         if will_insert:
             return Response({"Message": "Data fetched and stored successfully", "Result": data}, status=201)
