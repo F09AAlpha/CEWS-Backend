@@ -1,8 +1,11 @@
 from django.urls import path
-from myapp.Views.financialNewsView import FetchFinancialNewsView, financialNewsListView
-from myapp.Views.currencyNewsView import currencyNewsListView, FetchCurrencyNewsView
+from myapp.Views.healthCheckView import HealthCheckView
+from myapp.Views.economicIndicatorsView import StoreAnnualIndicatorsView, StoreMonthlyIndicatorsView
+from myapp.Views.financialNewsView import FetchFinancialNewsView, FinancialNewsListView
+from myapp.Views.currencyNewsView import CurrencyNewsListView, FetchCurrencyNewsView
 from myapp.Views.exchangeRateLatestViews import CurrencyRateView
 from myapp.Views.historicalExchangeRatesView import FetchHistoricalCurrencyExchangeRates
+from myapp.Views.volatilityView import VolatilityAnalysisView
 
 
 urlpatterns = [
@@ -16,4 +19,12 @@ urlpatterns = [
         FetchHistoricalCurrencyExchangeRates.as_view(),
         name='fetch-historical-exchange-rates'
     ),
+    path(
+        'v1/analytics/volatility/<str:base>/<str:target>/',
+        VolatilityAnalysisView.as_view(),
+        name='volatility_analysis',
+    ),
+    path('v1/economic/indicators/annual/', StoreAnnualIndicatorsView.as_view(), name='store-annual-economic-indicators'),
+    path('v1/economic/indicators/monthly/', StoreMonthlyIndicatorsView.as_view(), name='store-monthly-economic-indicators'),
+
 ]
