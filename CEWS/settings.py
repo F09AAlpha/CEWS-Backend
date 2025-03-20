@@ -16,9 +16,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-=8a!@za^xz_ql^=l!4zw&p$h_z!m!nd_yqoi0jh8)ib21zer4h'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []  # Add your allowed hosts or IPs here
+ALLOWED_HOSTS = ['*']  # Add your allowed hosts or IPs here
 
 ALPHA_VANTAGE_API_KEY = os.environ.get('ALPHA_VANTAGE_API_KEY')
 

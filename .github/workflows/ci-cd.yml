@@ -146,7 +146,7 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
           echo "Successfully pushed image to ECR: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-    # ECS deployment job
+  # ECS deployment job
   deploy-to-ecs:
     runs-on: ubuntu-latest
     needs: deploy-to-ecr
