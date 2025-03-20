@@ -21,6 +21,9 @@ RUN apt-get update \
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Expose the correct port
+EXPOSE 8000
+
 # Copy project
 COPY . /app/
 
