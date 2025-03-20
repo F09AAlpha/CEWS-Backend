@@ -9,22 +9,22 @@ from myapp.Serializers.currencyNewsSerializer import CurrencyNewsSerializer
 from rest_framework import generics
 
 
-
 # Alpha Vantage API configuration
 ALPHA_VANTAGE_API_KEY = "VCQD8OHRMOLM1H10"  # Replace with your API key
 ALPHA_VANTAGE_URL = "https://www.alphavantage.co/query"
 
 
 class FetchCurrencyNewsView(APIView):
-    def post(self, request, *args, **kwargs):
-        currency = request.data.get("currency", "USD")  # Default: USD
-
+    def post(self, request, currency, *args, **kwargs):
+        # Get the limit parameter from query parameters, default is 10
+        limit = request.query_params.get("limit", 10)
+        
         params = {
             "function": "NEWS_SENTIMENT",
             "topics": currency,
             "apikey": ALPHA_VANTAGE_API_KEY,
             "sort": "LATEST",
-            "limit": 10
+            "limit": limit
         }
 
         response = requests.get(ALPHA_VANTAGE_URL, params=params)
@@ -57,40 +57,58 @@ class FetchCurrencyNewsView(APIView):
                             stored_news.append(serializer.data)
 
                 return Response(
-                    {"message": "Currency news data fetched and stored", "news": stored_news},
-                    status=status.HTTP_201_CREATED
+                    {"message": f"Currency news data fetched and stored for {currency}", "currency": currency},
+                    status=status.HTTP_200_OK
                 )
             else:
                 return Response(
-                    {"error": "No currency news data found in the API response."},
-                    status=status.HTTP_404_NOT_FOUND,
+                    {"message": f"No currency news data found for {currency}"},
+                    status=status.HTTP_200_OK,
                 )
         else:
             return Response(
-                {"error": f"Failed to fetch currency news data from Alpha Vantage: {response.status_code}"},
-                status=response.status_code,
+                {"detail": f"Failed to fetch currency news data from Alpha Vantage: {response.status_code}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-class CurrencyNewsListView(generics.RetrieveAPIView):
+
+class CurrencyNewsListView(generics.ListAPIView):
     serializer_class = CurrencyNewsSerializer
+    
+    def get_queryset(self):
+        # Get query parameters
+        currency = self.request.query_params.get('currency')
+        sentiment = self.request.query_params.get('sentiment_score')
+        limit = self.request.query_params.get('limit', 10)  # Default to 100 if not specified
+        
+        # Start with all objects
+        queryset = CurrencyNewsAlphaV.objects.all().order_by('-publication_date')
 
-    def get_object(self):
-        # Get the currency from the URL
-        currency = self.kwargs.get('currency')
-
-        # Fetch the latest entry for the specified currency
-        try:
-            return CurrencyNewsAlphaV.objects.filter(currency=currency).latest('published_at')
-        except CurrencyNewsAlphaV.DoesNotExist:
-            return None
-
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        if instance:
-            serializer = self.get_serializer(instance)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        else:
-            return Response(
-                {"error": f"No news found for currency: {self.kwargs.get('currency')}"},
-                status=status.HTTP_404_NOT_FOUND
-            )
+        # Apply filters if provided
+        if currency:
+            queryset = queryset.filter(currency=currency)
+            
+        if sentiment:
+            try:
+                sentiment_value = float(sentiment)
+                # Filter sentiment_score within ±0.5 of the entered value
+                queryset = queryset.filter(sentiment_score__gte=sentiment_value - 0.5,
+                                          sentiment_score__lte=sentiment_value + 0.5)
+            except ValueError:
+                # Handle the case where sentiment is not a valid float
+                print(f"Invalid sentiment value: {sentiment}")  # Debugging
+        
+        # Debugging: Print the generated SQL query
+        print(queryset.query)
+        
+        # Limit results
+        return queryset[:int(limit)]
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        
+        if not queryset:
+            return Response([], status=status.HTTP_200_OK)
+            
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
