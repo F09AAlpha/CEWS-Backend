@@ -16,5 +16,7 @@ __pycache__
 *.pyo
 *.pyd
 
-# Ignore logs
-logs/
+# Ignore log files
+*.log
+currency_collector.log
+logs//

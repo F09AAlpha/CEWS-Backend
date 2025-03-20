@@ -1,4 +1,5 @@
 from django.urls import path
+from myapp.Views.healthCheckView import HealthCheckView
 from myapp.Views.economicIndicatorsView import StoreAnnualIndicatorsView
 from myapp.Views.financialNewsView import FetchFinancialNewsView, FinancialNewsListView
 from myapp.Views.currencyNewsView import CurrencyNewsListView, FetchCurrencyNewsView
@@ -8,6 +9,7 @@ from myapp.Views.volatilityView import VolatilityAnalysisView
 
 
 urlpatterns = [
+    path('', HealthCheckView.as_view(), name='health-check'),
     path('fetch-financial-news/', FetchFinancialNewsView.as_view(), name='fetch-financial-news'),
     path('financial-news/', FinancialNewsListView.as_view(), name='financial-news-list'),
     path('currency/<str:currency_code>/', FetchCurrencyNewsView.as_view(), name='fetch-currency-news'),

@@ -1,9 +1,13 @@
 from rest_framework import serializers
-from myapp.Models.exchangeRateLatestModel import CurrencyEvent
 
 
-class CurrencyRateSerializer(serializers.ModelSerializer):
-    """Serializer for currency rate responses"""
-    class Meta:
-        model = CurrencyEvent
-        fields = ['base', 'target', 'rate', 'timestamp', 'source', 'event_id']
+class CurrencyRateSerializer(serializers.Serializer):
+    """
+    Serializer for currency exchange rate data.
+    This matches the CurrencyRate schema from the OpenAPI specification.
+    """
+    base = serializers.CharField(max_length=3, help_text="Base currency code")
+    target = serializers.CharField(max_length=3, help_text="Target currency code")
+    rate = serializers.CharField(help_text="Exchange rate")
+    timestamp = serializers.CharField(help_text="Last refreshed timestamp")
+    source = serializers.CharField(help_text="Data source")
