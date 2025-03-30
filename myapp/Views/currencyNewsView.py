@@ -1,4 +1,4 @@
-from datetime import timezone,datetime
+from datetime import timezone, datetime
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -62,7 +62,7 @@ class FetchCurrencyNewsView(APIView):
                 # Create ADAGE 3.0 response format
                 current_time = datetime.now(timezone.utc)
                 date_str = current_time.strftime("%Y%m%d")
-                
+
                 adage_response = {
                     "data_source": "Alpha Vantage",
                     "dataset_type": "currency_news",
@@ -73,10 +73,10 @@ class FetchCurrencyNewsView(APIView):
                     },
                     "events": []
                 }
-                
+
                 # No need to create response events since we just stored the data
                 # But we provide the ADAGE structure for consistency
-                
+
                 adage_serializer = AdageNewsDatasetSerializer(data=adage_response)
                 if adage_serializer.is_valid():
                     return Response(
@@ -102,7 +102,7 @@ class FetchCurrencyNewsView(APIView):
 
 class CurrencyNewsListView(generics.ListAPIView):
     serializer_class = CurrencyNewsSerializer
-    
+
     def get_queryset(self):
         # Get query parameters
         currency = self.request.query_params.get('currency')
@@ -141,10 +141,10 @@ class CurrencyNewsListView(generics.ListAPIView):
         # Convert to ADAGE 3.0 format
         current_time = datetime.now(timezone.utc)
         date_str = current_time.strftime("%Y%m%d")
-        
+
         # Get currency from parameters or use 'all' if not specified
         currency = request.query_params.get('currency', 'all')
-        
+
         # Create the ADAGE 3.0 structure
         adage_data = {
             "data_source": "Alpha Vantage",
@@ -156,11 +156,11 @@ class CurrencyNewsListView(generics.ListAPIView):
             },
             "events": []
         }
-        
+
         # Create events from queryset
         for news_item in queryset:
             event_id = f"CN-{date_str}-{uuid.uuid4().hex[:8]}"
-            
+
             # Create event data structure
             event = {
                 "time_object": {
@@ -181,9 +181,9 @@ class CurrencyNewsListView(generics.ListAPIView):
                     "currency": news_item.currency
                 }
             }
-            
+
             adage_data["events"].append(event)
-        
+
         # Validate the structure using the serializer
         adage_serializer = AdageNewsDatasetSerializer(data=adage_data)
         if adage_serializer.is_valid():

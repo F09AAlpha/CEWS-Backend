@@ -1,10 +1,9 @@
-from datetime import timezone,datetime
+from datetime import timezone, datetime
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 import requests
 import os
-from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from myapp.Models.financialNewsModel import FinancialNewsAlphaV
 from myapp.Serializers.financialNewsSerializer import (
@@ -30,7 +29,7 @@ class FetchFinancialNewsView(APIView):
             "limit": 10
         }
 
-        response = requests.get(ALPHA_VANTAGE_URL, params=params, timeout =10)
+        response = requests.get(ALPHA_VANTAGE_URL, params=params)
         response.raise_for_status()
 
         if response.status_code == 200:
@@ -39,10 +38,9 @@ class FetchFinancialNewsView(APIView):
 
             if news_data:
                 stored_news = []
-                events = []
                 current_time = datetime.now(timezone.utc)
                 date_str = current_time.strftime("%Y%m%d")
-                
+
                 for article in news_data:
                     publication_date = parse_datetime(article.get("time_published"))
                     aware_publication_date = publication_date.replace(tzinfo=timezone.utc)
@@ -78,7 +76,7 @@ class FetchFinancialNewsView(APIView):
                     },
                     "events": []
                 }
-                
+
                 adage_serializer = AdageFinancialNewsDatasetSerializer(data=adage_response)
                 if adage_serializer.is_valid():
                     return Response(

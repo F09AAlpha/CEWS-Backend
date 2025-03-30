@@ -1,7 +1,5 @@
 from rest_framework import serializers
 from myapp.Models.currencyNewsModel import CurrencyNewsAlphaV
-from datetime import datetime
-import uuid
 
 
 class CurrencyNewsSerializer(serializers.ModelSerializer):
