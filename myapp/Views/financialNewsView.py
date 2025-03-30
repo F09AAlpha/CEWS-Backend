@@ -19,7 +19,7 @@ ALPHA_VANTAGE_URL = "https://www.alphavantage.co/query"
 
 class FetchFinancialNewsView(APIView):
     def post(self, request, *args, **kwargs):
-        symbol = request.data.get("symbol", "AAPL")  
+        symbol = request.data.get("symbol", "AAPL")
 
         params = {
             "function": "NEWS_SENTIMENT",
