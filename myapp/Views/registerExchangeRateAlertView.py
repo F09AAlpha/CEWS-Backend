@@ -1,9 +1,9 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from myapp.Models.exchangeRateAlertModel import ExchangeRateAlert
 from myapp.Serializers.exchangeRateAlertSerializer import ExchangeRateAlertSerializer
-import uuid  
+import uuid
+
 
 class RegisterAlertView(APIView):
     def post(self, request):
@@ -15,9 +15,6 @@ class RegisterAlertView(APIView):
         # Generate a unique alert ID and add it to the request data
         alert_id = f"ALERT-{uuid.uuid4().hex[:8]}"
         data["alert_id"] = alert_id
-
-        # Debugging: Print the modified data
-        print("Modified data:", data)
 
         serializer = ExchangeRateAlertSerializer(data=data)
         if serializer.is_valid():
@@ -31,4 +28,3 @@ class RegisterAlertView(APIView):
         # Debugging: Print validation errors if the data is not valid
         print("Validation errors:", serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-

@@ -20,14 +20,11 @@ from myapp.Serializers.exchangeRateLatestSerializer import (
     CurrencyRateEventSerializer
 )
 import re
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.utils import parseaddr
 
 # Load environment variables from the .env file
 load_dotenv()
 
-logger = logging.getLogger(__name__) 
+logger = logging.getLogger(__name__)
 
 ALPHA_VANTAGE_API_KEY = os.environ.get('ALPHA_VANTAGE_API_KEY')
 ALPHA_VANTAGE_BASE_URL = "https://www.alphavantage.co/query"
@@ -49,7 +46,7 @@ def send_alert_email(to_email, base, target, rate, alert_type, threshold):
     """
     # Log email sending attempt
     logger.debug(f"Preparing to send email to {to_email} for {base}/{target} with rate {rate}")
-    
+
     if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
         logger.error("Email credentials (EMAIL_HOST_USER or EMAIL_HOST_PASSWORD) are missing.")
         return
@@ -66,7 +63,8 @@ def send_alert_email(to_email, base, target, rate, alert_type, threshold):
     logger.debug(f"Email Host: {EMAIL_HOST_USER} (credentials used, but not displayed for security reasons)")
 
     subject = f"Exchange Rate Alert: {base}/{target}"
-    body = f"The exchange rate for {base}/{target} has {'risen above' if alert_type == 'above' else 'fallen below'} {threshold}. Current rate: {rate}"
+    body = f"The exchange rate for {base}/{target} has {'risen above' if alert_type == 'above' 
+                                                        else 'fallen below'} {threshold}. Current rate: {rate}"     
 
     msg = MIMEMultipart()
     msg["From"] = EMAIL_HOST_USER
@@ -78,16 +76,16 @@ def send_alert_email(to_email, base, target, rate, alert_type, threshold):
         # Start SMTP session
         server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
-        
+
         # Log in to the email server
         logger.debug("Attempting to log in to the SMTP server.")
         server.login(EMAIL_HOST_USER, EMAIL_HOST_PASSWORD)
-        
+
         # Send the email
         logger.debug(f"Sending email to {to_email}...")
         server.sendmail(EMAIL_HOST_USER, to_email, msg.as_string())
         server.quit()
-        
+
         logger.info(f"Alert email sent successfully to {to_email} for {base}/{target} with rate {rate}")
     except smtplib.SMTPException as e:
         logger.error(f"Failed to send alert email via SMTP: {str(e)}")

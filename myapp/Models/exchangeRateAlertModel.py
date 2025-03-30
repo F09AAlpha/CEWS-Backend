@@ -1,5 +1,6 @@
 from django.db import models
 
+
 class ExchangeRateAlert(models.Model):
     alert_id = models.CharField(max_length=100, unique=True, blank=True, null=True)  # Add the alert_id field
     base = models.CharField(max_length=3)
