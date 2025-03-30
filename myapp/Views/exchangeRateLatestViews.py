@@ -40,6 +40,7 @@ def is_valid_email(email):
     email_regex = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
     return re.match(email_regex, email) is not None
 
+
 def send_alert_email(to_email, base, target, rate, alert_type, threshold):
     """
     Sends an email notification for an exchange rate alert.
@@ -63,8 +64,8 @@ def send_alert_email(to_email, base, target, rate, alert_type, threshold):
     logger.debug(f"Email Host: {EMAIL_HOST_USER} (credentials used, but not displayed for security reasons)")
 
     subject = f"Exchange Rate Alert: {base}/{target}"
-    body = f"The exchange rate for {base}/{target} has {'risen above' if alert_type == 'above' 
-                                                        else 'fallen below'} {threshold}. Current rate: {rate}"     
+    body = f"The exchange rate for {base}/{target} has {'risen above' if alert_type == 'above'
+                                                        else 'fallen below'} {threshold}. Current rate: {rate}"
 
     msg = MIMEMultipart()
     msg["From"] = EMAIL_HOST_USER

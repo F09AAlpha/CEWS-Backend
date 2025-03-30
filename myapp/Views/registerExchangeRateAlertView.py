@@ -28,3 +28,4 @@ class RegisterAlertView(APIView):
         # Debugging: Print validation errors if the data is not valid
         print("Validation errors:", serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
