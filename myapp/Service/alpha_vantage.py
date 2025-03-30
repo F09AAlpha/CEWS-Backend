@@ -1,6 +1,7 @@
 import requests
 import pandas as pd
 from django.conf import settings
+from datetime import datetime
 
 
 class AlphaVantageService:
@@ -32,6 +33,17 @@ class AlphaVantageService:
         if 'Error Message' in data:
             raise Exception(f"Alpha Vantage API error: {data['Error Message']}")
 
+        # Extract metadata for ADAGE 3.0 FORMAT
+        metadata = {
+            'data_source': 'Alpha Vantage',
+            'dataset_type': 'Forex Daily',
+            'dataset_id': f"forex_daily_{from_currency}_{to_currency}_{datetime.now().strftime('%Y%m%d')}",
+            'time_object': {
+                'timestamp': datetime.now().isoformat(),
+                'timezone': 'GMT+0'
+            }
+        }
+
         # Extract time series data
         time_series_key = 'Time Series FX (Daily)'
         if time_series_key not in data:
@@ -51,4 +63,4 @@ class AlphaVantageService:
         df.index = pd.to_datetime(df.index)
         df = df.sort_index()  # Sort by date
 
-        return df
+        return df, metadata
