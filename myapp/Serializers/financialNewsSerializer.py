@@ -6,17 +6,17 @@ class FinancialNewsSerializer(serializers.ModelSerializer):
     class Meta:
         model = FinancialNewsAlphaV
         fields = [
-            'id',  # Auto-generated primary key
+            'id',
             'title',  # Title of the news article
             'source',  # Source of the news article
             'url',  # URL of the news article
             'summary',  # Summary of the news article
             'sentiment_score',  # Sentiment score
             'sentiment_label',  # Sentiment label
-            'publication_date',  # Publication date
-            'symbol',  # Stock symbol for which the news is relevant
+            'publication_date',
+            'symbol',
         ]
-        read_only_fields = ['id']  # Ensure 'id' is read-only
+        read_only_fields = ['id']
 
 
 # ADAGE 3.0 Data Model Serializers

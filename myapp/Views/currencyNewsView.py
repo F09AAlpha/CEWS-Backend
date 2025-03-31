@@ -13,7 +13,7 @@ from myapp.Serializers.currencyNewsSerializer import AdageNewsDatasetSerializer
 
 
 # Alpha Vantage API configuration
-ALPHA_VANTAGE_API_KEY = os.environ.get('ALPHA_VANTAGE_API_KEY')  # Replace with your API key
+ALPHA_VANTAGE_API_KEY = os.environ.get('ALPHA_VANTAGE_API_KEY')
 ALPHA_VANTAGE_URL = "https://www.alphavantage.co/query"
 
 
@@ -73,9 +73,6 @@ class FetchCurrencyNewsView(APIView):
                     },
                     "events": []
                 }
-
-                # No need to create response events since we just stored the data
-                # But we provide the ADAGE structure for consistency
 
                 adage_serializer = AdageNewsDatasetSerializer(data=adage_response)
                 if adage_serializer.is_valid():

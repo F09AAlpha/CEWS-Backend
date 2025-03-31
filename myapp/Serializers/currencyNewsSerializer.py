@@ -6,8 +6,8 @@ class CurrencyNewsSerializer(serializers.ModelSerializer):
     class Meta:
         model = CurrencyNewsAlphaV
         fields = [
-            'id',  # Auto-generated primary key
-            'title',  # Title of the news article
+            'id',
+            'title',
             'source',  # Source of the news article
             'url',  # URL of the news article
             'summary',  # Summary of the news article
@@ -16,7 +16,7 @@ class CurrencyNewsSerializer(serializers.ModelSerializer):
             'publication_date',  # Publication date
             'currency',  # Currency for which the news is relevant
         ]
-        read_only_fields = ['id']  # Ensure 'id' is read-only
+        read_only_fields = ['id']
 
 
 # ADAGE 3.0 Data Model Serializers
