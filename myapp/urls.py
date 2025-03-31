@@ -1,7 +1,7 @@
 from django.urls import path
 from myapp.Views.healthCheckView import HealthCheckView
 from myapp.Views.economicIndicatorsView import StoreAnnualIndicatorsView, StoreMonthlyIndicatorsView
-from myapp.Views.financialNewsView import FetchFinancialNewsView, FinancialNewsListView
+from myapp.Views.financialNewsView import FetchFinancialNewsView
 from myapp.Views.currencyNewsView import CurrencyNewsListView, FetchCurrencyNewsView
 from myapp.Views.exchangeRateLatestViews import CurrencyRateView
 from myapp.Views.historicalExchangeRatesView import FetchHistoricalCurrencyExchangeRates
@@ -11,14 +11,15 @@ from myapp.Views.graphView_lastmonth import GraphView_lastmonth
 from myapp.Views.graphView_last6months import GraphView_last6months
 from myapp.Views.graphView_lastyear import GraphView_lastyear
 from myapp.Views.graphView_last5years import GraphView_last5years
+from myapp.Views.registerExchangeRateAlertView import RegisterAlertView
 
 urlpatterns = [
     path('', HealthCheckView.as_view(), name='health-check'),
-    path('fetch-financial-news/', FetchFinancialNewsView.as_view(), name='fetch-financial-news'),
-    path('financial-news/', FinancialNewsListView.as_view(), name='financial-news-list'),
-    path('currency/<str:currency_code>/', FetchCurrencyNewsView.as_view(), name='fetch-currency-news'),
-    path('currency-news/', CurrencyNewsListView.as_view(), name='currency-news-list'),
+    path('v1/financial/', FetchFinancialNewsView.as_view(), name='fetch-financial-news'),
+    path('v1/currency/<str:currency>', FetchCurrencyNewsView.as_view(), name='fetch-currency-news'),
+    path('v1/news/events', CurrencyNewsListView.as_view(), name='currency-news-list'),
     path('v1/currency/rates/<str:base>/<str:target>/', CurrencyRateView.as_view(), name='currency-rate'),
+    path('v1/alerts/register/', RegisterAlertView.as_view(), name='register-alert'),
     path(
         'v1/currency/rates/<str:from_currency>/<str:to_currency>/historical',
         FetchHistoricalCurrencyExchangeRates.as_view(),
@@ -41,6 +42,5 @@ urlpatterns = [
          name='last-year-graph_view'),
     path('graph/<str:from_currency>/<str:to_currency>/last-5-years',
          GraphView_last5years.as_view(),
-         name='last-5-years-graph_view')
-
+         name='last-5-years-graph_view'),
 ]
