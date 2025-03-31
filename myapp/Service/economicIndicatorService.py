@@ -1,7 +1,11 @@
+from datetime import datetime
 import os
+import uuid
+import pytz
 import requests
 import logging
 from django.db import transaction
+from myapp.Serializers.economicIndicatorsSerializer import TimeObjectSerializer
 from myapp.models import AnnualEconomicIndicator, MonthlyEconomicIndicator
 from django.conf import settings
 
@@ -72,6 +76,54 @@ class AnnualIndicatorsService:
                 logger.info(f"Inserted {len(new_entries)} new annual indicator records.")
             else:
                 logger.info("No new annual indicators to store.")
+
+            # Retrieve the latest stored record
+            latest_stored = AnnualEconomicIndicator.objects.order_by("-date").first()
+            if not latest_stored:
+                raise Exception("No economic indicators found in the database after update.")
+
+            # ADAGE 3.0 Formating
+            now = datetime.now(pytz.UTC)
+            now_str = now.strftime("%Y-%m-%d %H:%M:%S.%f")
+
+            event_id = f"AEI-{now.strftime('%Y%m%d')}-{uuid.uuid4().hex[:8]}"
+
+            dataset_time_object = {
+                "timestamp": now_str,
+                "timezone": "UTC"
+            }
+
+            time_object_serializer = TimeObjectSerializer(data=dataset_time_object)
+            if not time_object_serializer.is_valid():
+                logger.error(f"Invalid time object format: {time_object_serializer.errors}")
+                raise Exception("Error formating time object data")
+
+            event = {
+                "time_object": {
+                    "timestamp": str(latest_stored.date),
+                    "duration": 365,  # 1 year in days
+                    "duration_unit": "days",
+                    "timezone": "UTC"
+                },
+                "event_type": "economic_indicator",
+                "event_id": event_id,
+                "attributes": {
+                    "real_gdp": latest_stored.real_gdp,
+                    "inflation": latest_stored.inflation,
+                    "source": "Alpha Vantage"
+                }
+            }
+
+            adage_data = {
+                "data_source": "Alpha Vantage",
+                "dataset_type": "annual_economic_indicators",
+                "dataset_id": f"annual-indicators-{latest_stored.date}",
+                "time_object": dataset_time_object,
+                "events": [event]
+            }
+
+            # Return the ADAGE 3.0 formatted response
+            return adage_data
 
         except Exception as e:
             logger.exception(f"Error storing annual indicators: {str(e)}")
