@@ -77,11 +77,11 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
                 if latest_date is None or date_str > latest_date.isoformat()
             ]
 
-            status_code=200
-            
+            status_code = 200
+
             # Batch insert data
             if will_insert:
-                status_code=201
+                status_code = 201
                 with transaction.atomic():
                     psycopg2.extras.execute_values(
                         cursor,
@@ -92,20 +92,21 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
                         """,
                         batch_data
                     )
-            return Response({"data_source": "Alpha Vantage",
-                         "dataset_type": "historical_currency_exchange_rate",
-                         "dataset_id": f"currency-{from_currency}-{to_currency}-{datetime.now(pytz.UTC).strftime('%Y')}-2014",
-                         "time_object": {"timestamp": datetime.now(pytz.UTC).strftime("%Y-%m-%d %H:%M:%S.%f"),
-                                         "timezone": "UTC"},
-                         "event": [{"event_type": "historical_currency_rates",
-                                    "event_id": f"CE-{datetime.now(pytz.UTC).strftime('%Y%m%d')}-{uuid.uuid4().hex[:8]}",
-                                    "attributes": {
-                                        "base": data["Meta Data"]["2. From Symbol"],
-                                        "target": data["Meta Data"]["3. To Symbol"],
-                                        "data": data["Time Series FX (Daily)"]
-                                    }
-                                }
-                            ],
-                         },
-                        status=status_code
-                        )
+            return Response({
+                "data_source": "Alpha Vantage",
+                "dataset_type": "historical_currency_exchange_rate",
+                "dataset_id": f"currency-{from_currency}-{to_currency}-{datetime.now(pytz.UTC).strftime('%Y')}-2014",
+                "time_object": {"timestamp": datetime.now(pytz.UTC).strftime("%Y-%m-%d %H:%M:%S.%f"),
+                                "timezone": "UTC"},
+                "event": [{
+                    "event_type": "historical_currency_rates",
+                    "event_id": f"CE-{datetime.now(pytz.UTC).strftime('%Y%m%d')}-{uuid.uuid4().hex[:8]}",
+                    "attributes": {
+                        "base": data["Meta Data"]["2. From Symbol"],
+                        "target": data["Meta Data"]["3. To Symbol"],
+                        "data": data["Time Series FX (Daily)"]
+                        }
+                    }],
+                },
+                status=status_code
+            )
