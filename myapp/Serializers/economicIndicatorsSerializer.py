@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 class TimeObjectSerializer(serializers.Serializer):
     """Serializer for time object information in ADAGE 3.0 format."""
-    timestamp = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%S.%f", source="timestamp", help_text="Timestamp rep")
+    timestamp = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%S.%f", help_text="Timestamp rep")
     duration = serializers.IntegerField(required=False, default=365, help_text="Event duration")
     duration_unit = serializers.CharField(required=False, default="days", help_text="Unit of duration measurement")
     timezone = serializers.CharField(default="UTC", help_text="Timezone of the timestamp")
