@@ -213,6 +213,56 @@ class MonthlyIndicatorService:
             else:
                 logger.info("No new monthly economic indicator data to store.")
 
+            # Retrieve the lates stored record
+            latest_stored = MonthlyEconomicIndicator.objects.order_by("-date").first()
+            if not latest_stored:
+                raise Exception("No economic indicators found in the database after update")
+
+            # ADAGE 3.0 Formatting
+            now = datetime.now(pytz.UTC)
+            now_str = now.strftime("%Y-%m-%d %H:%M:%S.%f")
+
+            event_id = f"AEI-{now.strftime('%Y%m%d')}-{uuid.uuid4().hex[:8]}"
+
+            dataset_time_object = {
+                "timestamp": now_str,
+                "timezone": "UTC"
+            }
+
+            time_object_serializer = TimeObjectSerializer(data=dataset_time_object)
+            if not time_object_serializer.is_valid():
+                logger.error(f"Invalid time object format: {time_object_serializer.errors}")
+                raise Exception("Error formating time object data")
+
+            event = {
+                "time_object": {
+                    "timestamp": str(latest_stored.date),
+                    "duration": 1,  # 1 month in days
+                    "duration_unit": "month",
+                    "timezone": "UTC"
+                },
+                "event_type": "economic_indicator",
+                "event_id": event_id,
+                "attributes": {
+                    "cpi": latest_stored.cpi,
+                    "unemployment_rate": latest_stored.unemployment_rate,
+                    "federal_funds_rate": latest_stored.federal_funds_rate,
+                    "treasury_yield": latest_stored.treasury_yield,
+                    "source": "Alpha Vantage"
+                }
+            }
+
+            adage_data = {
+                "data_source": "Alpha Vantage",
+                "dataset_type": "monthly_economic_indicators",
+                "dataset_id": f"monthly-indicators-{latest_stored.date}",
+                "time_object": dataset_time_object,
+                "events": [event]
+            }
+
+            # Return the ADAGE 3.0 formatted response
+            return adage_data
+
         except Exception as e:
             logger.exception(f"Error storing monthly economic indicators: {str(e)}")
             raise
