@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 ALPHA_VANTAGE_API_KEY = os.environ.get('ALPHA_VANTAGE_API_KEY')
 ALPHA_VANTAGE_BASE_URL = "https://www.alphavantage.co/query"
 EMAIL_HOST_USER = "cewsalerts@gmail.com"
-EMAIL_HOST_PASSWORD = "cewsalerts123"
+EMAIL_HOST_PASSWORD = "okkiwfitmdzdojwf"
 
 
 def is_valid_email(email):
