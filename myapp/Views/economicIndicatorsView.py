@@ -2,7 +2,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from myapp.Service.economicIndicatorService import AnnualIndicatorsService, MonthlyIndicatorService
+from myapp.Serializers.economicIndicatorsSerializer import EconomicIndicatorsResponseSerializer
 import logging
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -20,11 +22,31 @@ class StoreAnnualIndicatorsView(APIView):
             Response: JSON response indicating success or failure.
         """
         try:
-            AnnualIndicatorsService.store_annual_indicators()
-            return Response({"message": "Annual economic indicators stored successfully."}, status=status.HTTP_200_OK)
+            # Store indicators and retrieve latest record in ADAGE format
+            latest_data = AnnualIndicatorsService.store_annual_indicators()
+
+            # Serialize response
+            serializer = EconomicIndicatorsResponseSerializer(data=latest_data)
+            if not serializer.is_valid():
+                logger.error(f"Invalid ADAGE format: {serializer.errors}")
+                return Response(
+                    {"error": "Error formatting response data."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Return the latest annual indicators in ADAGE 3.0 format
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error connecting to Alpha Vantage API: {str(e)}")
+            return Response(
+                {"error": "Failed to fetch data from external API."},
+                status=status.HTTP_502_BAD_GATEWAY
+                )
+
         except Exception as e:
             logger.exception(f"Error updating economic indicators: {str(e)}")
-            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class StoreMonthlyIndicatorsView(APIView):
@@ -40,12 +62,28 @@ class StoreMonthlyIndicatorsView(APIView):
             Response: JSON response indicating success or failure.
         """
         try:
-            MonthlyIndicatorService.store_monthly_indicators()
+            # Store montly indicators and retrieve the latest record in ADAGE format
+            latest_data = MonthlyIndicatorService.store_monthly_indicators()
+
+            # Serialize response
+            serializer = EconomicIndicatorsResponseSerializer(data=latest_data)
+            if not serializer.is_valid():
+                logger.error(f"Invalid ADAGE format: {serializer.errors}")
+                return Response(
+                    {"error": "Error formatting the response data"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Return the latest montly indicators in ADAGE 3.0 format
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error connecting to Alpha Vantage API: {str(e)}")
             return Response(
-                {"message": "Monthly economic indicators stored successfully."}, status=status.HTTP_200_OK)
+                {"error": "Failed to fetch data from external API."},
+                status=status.HTTP_502_BAD_GATEWAY
+                )
+
         except Exception as e:
-            logger.exception(f"Error storing monthly economic indicators: {str(e)}")
-            return Response(
-                    {"error": "Failed to store monthly economic indicators."},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            logger.exception(f"Error updating economic indicators: {str(e)}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
