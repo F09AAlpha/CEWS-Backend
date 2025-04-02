@@ -20,6 +20,7 @@ from myapp.Service.alpha_vantage import (
     InvalidRequestError,
     TemporaryAPIError
 )
+from myapp.Models.anomalyDetectionModel import AnomalyDetectionResult
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,15 @@ def anomaly_detection(request):
 
         # Convert to ADAGE 3.0 format
         adage_result = ADAGEConverter.convert_to_adage_format(result)
+
+        # Store result in the database
+        AnomalyDetectionResult.objects.create(
+            base_currency=base,
+            target_currency=target,
+            analysis_period_days=days,
+            anomaly_count=result['anomaly_count'],
+            result_data=adage_result
+        )
 
         # Return results
         return Response(adage_result)
