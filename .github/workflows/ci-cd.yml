@@ -62,6 +62,7 @@ jobs:
           name: ubl-despatch-image
           path: /tmp/ubl-despatch-image.tar
           retention-days: 1
+          
 
   # Generate a test coverage pdf document
   test-coverage-report:
