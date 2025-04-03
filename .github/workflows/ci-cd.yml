@@ -98,7 +98,6 @@ jobs:
           DROP DATABASE IF EXISTS test_${{ secrets.TEST_DB_NAME }};
           "
 
-
       # Run with existing docker-compose file, but override the image
       - name: Run unit tests inside container
         run: |
@@ -129,8 +128,20 @@ jobs:
           DB_PORT=${{ secrets.TEST_DB_PORT }}
           EOF
 
+      - name: Delete test database if exists
+        run: |
+          PGPASSWORD=${{ secrets.TEST_DB_PASSWORD }} psql -h ${{ secrets.TEST_DB_HOST }} -U ${{ secrets.TEST_DB_USER }} -d postgres -c "
+          SELECT pg_terminate_backend(pg_stat_activity.pid)
+          FROM pg_stat_activity
+          WHERE pg_stat_activity.datname = 'test_${{ secrets.TEST_DB_NAME }}' AND pid <> pg_backend_pid();
+          "
+          
+          PGPASSWORD=${{ secrets.TEST_DB_PASSWORD }} psql -h ${{ secrets.TEST_DB_HOST }} -U ${{ secrets.TEST_DB_USER }} -d postgres -c "
+          DROP DATABASE IF EXISTS test_${{ secrets.TEST_DB_NAME }};
+          "
+      
       # Run with existing docker-compose file, but override the image
-      - name: Run unit tests inside container
+      - name: Run integreation tests inside container
         run: |
           docker-compose up -d
           docker-compose exec -T web python manage.py test myapp/tests/integration
@@ -159,8 +170,20 @@ jobs:
           DB_PORT=${{ secrets.TEST_DB_PORT }}
           EOF
 
+      - name: Delete test database if exists
+        run: |
+          PGPASSWORD=${{ secrets.TEST_DB_PASSWORD }} psql -h ${{ secrets.TEST_DB_HOST }} -U ${{ secrets.TEST_DB_USER }} -d postgres -c "
+          SELECT pg_terminate_backend(pg_stat_activity.pid)
+          FROM pg_stat_activity
+          WHERE pg_stat_activity.datname = 'test_${{ secrets.TEST_DB_NAME }}' AND pid <> pg_backend_pid();
+          "
+          
+          PGPASSWORD=${{ secrets.TEST_DB_PASSWORD }} psql -h ${{ secrets.TEST_DB_HOST }} -U ${{ secrets.TEST_DB_USER }} -d postgres -c "
+          DROP DATABASE IF EXISTS test_${{ secrets.TEST_DB_NAME }};
+          "
+
       # Run with existing docker-compose file, but override the image
-      - name: Run unit tests inside container
+      - name: Run e2e tests inside container
         run: |
           docker-compose up -d
           docker-compose exec -T web python manage.py test myapp/tests/e2e
