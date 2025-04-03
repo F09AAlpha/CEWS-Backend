@@ -92,8 +92,12 @@ jobs:
           SELECT pg_terminate_backend(pg_stat_activity.pid)
           FROM pg_stat_activity
           WHERE pg_stat_activity.datname = 'test_${{ secrets.TEST_DB_NAME }}' AND pid <> pg_backend_pid();
+          "
+          
+          PGPASSWORD=${{ secrets.TEST_DB_PASSWORD }} psql -h ${{ secrets.TEST_DB_HOST }} -U ${{ secrets.TEST_DB_USER }} -d postgres -c "
           DROP DATABASE IF EXISTS test_${{ secrets.TEST_DB_NAME }};
-          " -w
+          "
+
 
       # Run with existing docker-compose file, but override the image
       - name: Run unit tests inside container
