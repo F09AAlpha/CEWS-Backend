@@ -90,7 +90,7 @@ jobs:
       - name: Run unit tests inside container
         run: |
           docker-compose up -d
-          docker-compose exec -T web python manage.py test myapp.tests.unit
+          docker-compose exec -T web python manage.py test myapp/tests/unit
           docker-compose down
 
   # Integration Tests
@@ -120,7 +120,7 @@ jobs:
       - name: Run unit tests inside container
         run: |
           docker-compose up -d
-          docker-compose exec -T web python manage.py test myapp.tests.integration
+          docker-compose exec -T web python manage.py test myapp/tests/integration
           docker-compose down
 
     # End-to-End tests
@@ -150,7 +150,7 @@ jobs:
       - name: Run unit tests inside container
         run: |
           docker-compose up -d
-          docker-compose exec -T web python manage.py test myapp.tests.e2e
+          docker-compose exec -T web python manage.py test myapp/tests/e2e
           docker-compose down
 
   # ECR deployment job
