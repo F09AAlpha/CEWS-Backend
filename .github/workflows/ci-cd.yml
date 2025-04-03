@@ -144,7 +144,7 @@ jobs:
       - name: Run integreation tests inside container
         run: |
           docker-compose up -d
-          docker-compose exec -T web python manage.py test myapp/tests/integration
+          docker-compose exec -T web python manage.py test myapp/tests/integration --keepdb
           docker-compose down
 
     # End-to-End tests
@@ -186,7 +186,7 @@ jobs:
       - name: Run e2e tests inside container
         run: |
           docker-compose up -d
-          docker-compose exec -T web python manage.py test myapp/tests/e2e
+          docker-compose exec -T web python manage.py test myapp/tests/e2e --keepdb
           docker-compose down
 
   # ECR deployment job
