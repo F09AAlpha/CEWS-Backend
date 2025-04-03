@@ -84,6 +84,7 @@ jobs:
           DB_PASSWORD=${{ secrets.TEST_DB_PASSWORD }}
           DB_HOST=${{ secrets.TEST_DB_HOST }}
           DB_PORT=${{ secrets.TEST_DB_PORT }}
+          ALPHA_VANTAGE_API_KEY=${{ secrets.ALPHA_VANTAGE_API_KEY }}
           EOF
 
       - name: Delete test database if exists
@@ -126,6 +127,7 @@ jobs:
           DB_PASSWORD=${{ secrets.TEST_DB_PASSWORD }}
           DB_HOST=${{ secrets.TEST_DB_HOST }}
           DB_PORT=${{ secrets.TEST_DB_PORT }}
+          ALPHA_VANTAGE_API_KEY=${{ secrets.ALPHA_VANTAGE_API_KEY }}
           EOF
 
       - name: Delete test database if exists
@@ -168,6 +170,7 @@ jobs:
           DB_PASSWORD=${{ secrets.TEST_DB_PASSWORD }}
           DB_HOST=${{ secrets.TEST_DB_HOST }}
           DB_PORT=${{ secrets.TEST_DB_PORT }}
+          ALPHA_VANTAGE_API_KEY=${{ secrets.ALPHA_VANTAGE_API_KEY }}
           EOF
 
       - name: Delete test database if exists
