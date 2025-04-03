@@ -88,7 +88,7 @@ jobs:
 
       - name: Delete test database if exists
         run: |
-          psql -h ${{ secrets.TEST_DB_HOST }} -U ${{ secrets.TEST_DB_USER }} -d postgres -c "DROP DATABASE IF EXISTS test_${{ secrets.TEST_DB_NAME }};"
+          PGPASSWORD=${{ secrets.TEST_DB_PASSWORD }} psql -h ${{ secrets.TEST_DB_HOST }} -U ${{ secrets.TEST_DB_USER }} -d postgres -c "DROP DATABASE IF EXISTS test_${{ secrets.TEST_DB_NAME }};"
 
       # Run with existing docker-compose file, but override the image
       - name: Run unit tests inside container
