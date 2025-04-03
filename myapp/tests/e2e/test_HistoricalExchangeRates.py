@@ -3,6 +3,7 @@ from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework import status
 
+
 class HistoricalExchangeRatesEndToEndTest(APITestCase):
     """End-to-end tests for the Historical Exchange Rates API endpoint"""
 
@@ -60,12 +61,9 @@ class HistoricalExchangeRatesEndToEndTest(APITestCase):
         self.assertIn("dataset_id", response.data)
         self.assertIn("event", response.data)
 
-        # Verify that no new data was added
-        #self.assertEqual(len(response.data["event"]), 0)
-        
         # Verify that no new data was inserted
         with connection.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM historical_exchange_rate_usd_eur")
             count2 = cursor.fetchone()[0]
-        
-        self.assertEqual(count1,count2)
+
+        self.assertEqual(count1, count2)

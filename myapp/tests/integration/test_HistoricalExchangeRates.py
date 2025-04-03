@@ -13,10 +13,10 @@ class HistoricalExchangeRatesIntegrationTest(APITestCase):
         self.from_currency = 'USD'
         self.to_currency = 'EUR'
         self.url = reverse('fetch-historical-exchange-rates', args=[self.from_currency, self.to_currency])
-        
+
         # Set up initial data in the database
         with connection.cursor() as cursor:
-            cursor.execute(f"""
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS historical_exchange_rate_usd_eur (
                     id SERIAL,
                     date DATE NOT NULL PRIMARY KEY UNIQUE,
@@ -26,7 +26,7 @@ class HistoricalExchangeRatesIntegrationTest(APITestCase):
                     close DECIMAL(10, 5)
                 )
             """)
-            cursor.execute(f"""
+            cursor.execute("""
                 INSERT INTO historical_exchange_rate_usd_eur (date, open, high, low, close)
                 VALUES ('2023-10-01', 1.1000, 1.2000, 1.0500, 1.1500)
                 ON CONFLICT (date) DO NOTHING
