@@ -86,14 +86,11 @@ jobs:
           DB_PORT=${{ secrets.TEST_DB_PORT }}
           EOF
 
-      - name: Delete test database if exists
-        run: |
-          python manage.py dbshell -c "DROP DATABASE IF EXISTS test_${{secrets.TEST_DB_NAME}};"
-
       # Run with existing docker-compose file, but override the image
       - name: Run unit tests inside container
         run: |
           docker-compose up -d
+          docker-compose exec -T web python manage.py dbshell -c "DROP DATABASE IF EXISTS test_${{ secrets.TEST_DB_NAME }};"
           docker-compose exec -T web python manage.py test myapp/tests/unit
           docker-compose down
 
