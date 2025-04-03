@@ -103,7 +103,7 @@ jobs:
       - name: Run unit tests inside container
         run: |
           docker-compose up -d
-          docker-compose exec -T web python manage.py test myapp/tests/unit
+          docker-compose exec -T web python manage.py test myapp/tests/unit --keepdb
           docker-compose down
 
   # Integration Tests
