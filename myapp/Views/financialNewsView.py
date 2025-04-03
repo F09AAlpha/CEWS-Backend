@@ -1,21 +1,25 @@
+from datetime import timezone, datetime
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 import requests
-from django.utils import timezone
+import os
 from django.utils.dateparse import parse_datetime
 from myapp.Models.financialNewsModel import FinancialNewsAlphaV
-from myapp.Serializers.financialNewsSerializer import FinancialNewsSerializer
+from myapp.Serializers.financialNewsSerializer import (
+    FinancialNewsSerializer,
+    AdageFinancialNewsDatasetSerializer,
+)
 
 
 # Alpha Vantage API configuration
-ALPHA_VANTAGE_API_KEY = "VCQD8OHRMOLM1H10"  # Replace with your API key
+ALPHA_VANTAGE_API_KEY = os.environ.get('ALPHA_VANTAGE_API_KEY')
 ALPHA_VANTAGE_URL = "https://www.alphavantage.co/query"
 
 
 class FetchFinancialNewsView(APIView):
     def post(self, request, *args, **kwargs):
-        symbol = request.data.get("symbol", "AAPL")  # Default: USD
+        symbol = request.data.get("symbol", "AAPL")
 
         params = {
             "function": "NEWS_SENTIMENT",
@@ -26,6 +30,7 @@ class FetchFinancialNewsView(APIView):
         }
 
         response = requests.get(ALPHA_VANTAGE_URL, params=params)
+        response.raise_for_status()
 
         if response.status_code == 200:
             data = response.json()
@@ -33,6 +38,9 @@ class FetchFinancialNewsView(APIView):
 
             if news_data:
                 stored_news = []
+                current_time = datetime.now(timezone.utc)
+                date_str = current_time.strftime("%Y%m%d")
+
                 for article in news_data:
                     publication_date = parse_datetime(article.get("time_published"))
                     aware_publication_date = publication_date.replace(tzinfo=timezone.utc)
@@ -54,10 +62,33 @@ class FetchFinancialNewsView(APIView):
                             serializer.save()
                             stored_news.append(serializer.data)
 
-                return Response(
-                    {"message": "Financial news data fetched and stored", "news": stored_news},
-                    status=status.HTTP_201_CREATED
-                )
+                # Create ADAGE 3.0 response format
+                current_time = datetime.now(timezone.utc)
+                date_str = current_time.strftime("%Y%m%d")
+
+                adage_response = {
+                    "data_source": "Alpha Vantage",
+                    "dataset_type": "financial_news",
+                    "dataset_id": f"financial-news-{symbol}-{date_str}",
+                    "time_object": {
+                        "timestamp": current_time.isoformat(),
+                        "timezone": "UTC"
+                    },
+                    "events": []
+                }
+
+                adage_serializer = AdageFinancialNewsDatasetSerializer(data=adage_response)
+                if adage_serializer.is_valid():
+                    return Response(
+                        adage_serializer.data,
+                        status=status.HTTP_200_OK
+                    )
+                else:
+                    # Fall back to original response format if ADAGE structure validation fails
+                    return Response(
+                        {"message": "Financial news data fetched and stored", "news": stored_news},
+                        status=status.HTTP_201_CREATED
+                    )
             else:
                 return Response(
                     {"error": "No financial news data found in the API response."},

@@ -12,6 +12,7 @@ from myapp.Views.graphView_last6months import GraphView_last6months
 from myapp.Views.graphView_lastyear import GraphView_lastyear
 from myapp.Views.graphView_last5years import GraphView_last5years
 from myapp.Views.registerExchangeRateAlertView import RegisterAlertView
+from myapp.Views.anomalyDetectionView import anomaly_detection
 
 urlpatterns = [
     path('', HealthCheckView.as_view(), name='health-check'),
@@ -43,4 +44,5 @@ urlpatterns = [
     path('graph/<str:from_currency>/<str:to_currency>/last-5-years',
          GraphView_last5years.as_view(),
          name='last-5-years-graph_view'),
+    path('v2/analytics/anomaly-detection/', anomaly_detection, name='anomaly-detection'),
 ]

@@ -1,10 +1,16 @@
+from datetime import datetime
 import os
+import uuid
+import pytz
 import requests
 from django.db import connection, transaction
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from dotenv import load_dotenv
 import psycopg2.extras
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -19,12 +25,12 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
             f"&to_symbol={to_currency}&outputsize=full"
             f"&apikey={os.environ.get('ALPHA_VANTAGE_API_KEY')}"
         )
-
         try:
             response = requests.get(API_URL)
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
-            return Response({"error": str(e)}, status=500)
+            logger.error(f"Error connecting to Alpha Vantage API: {str(e)}")
+            return Response({"error": "Failed to fetch data from external API", "details": str(e)}, status=502)
 
         data = response.json()
         time_series = data.get("Time Series FX (Daily)", {})
@@ -35,20 +41,8 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
 
         with connection.cursor() as cursor:
             if not time_series:
-                cursor.execute(f"""
-                    SELECT date, open, high, low, close FROM {table_name} ORDER BY date
-                """)
-                rows = cursor.fetchall()
-                data = [
-                    {
-                        "date": row[0].isoformat(),
-                        "open": float(row[1]),
-                        "high": float(row[2]),
-                        "low": float(row[3]),
-                        "close": float(row[4])
-                    }
-                    for row in rows
-                ]
+                logger.error("Error fetching currency rates -- Invalid Currency")
+                return Response({"error": "BAD REQUEST -- Currency not found"}, status=400)
 
             # Check if the table exists
             cursor.execute(f"""
@@ -91,8 +85,11 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
                 if latest_date is None or date_str > latest_date.isoformat()
             ]
 
+            status_code = 200
+
             # Batch insert data
             if will_insert:
+                status_code = 201
                 with transaction.atomic():
                     psycopg2.extras.execute_values(
                         cursor,
@@ -103,12 +100,21 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
                         """,
                         batch_data
                     )
-
-        if will_insert:
-            return Response({"Message": "Data fetched and stored successfully", "Result": data}, status=201)
-        return Response({"Message": "Data fetched but no new data available",
-                         "From": from_currency,
-                         "To": to_currency,
-                         "Data": data},
-                        status=201
-                        )
+            return Response({
+                "data_source": "Alpha Vantage",
+                "dataset_type": "historical_currency_exchange_rate",
+                "dataset_id": f"currency-{from_currency}-{to_currency}-{datetime.now(pytz.UTC).strftime('%Y')}-2014",
+                "time_object": {"timestamp": datetime.now(pytz.UTC).strftime("%Y-%m-%d %H:%M:%S.%f"),
+                                "timezone": "UTC"},
+                "event": [{
+                    "event_type": "historical_currency_rates",
+                    "event_id": f"CE-{datetime.now(pytz.UTC).strftime('%Y%m%d')}-{uuid.uuid4().hex[:8]}",
+                    "attributes": {
+                        "base": data["Meta Data"]["2. From Symbol"],
+                        "target": data["Meta Data"]["3. To Symbol"],
+                        "data": data["Time Series FX (Daily)"]
+                        }
+                    }],
+                },
+                status=status_code
+            )
