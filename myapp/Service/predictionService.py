@@ -154,7 +154,10 @@ class PredictionService:
                 used_correlation_data=prediction_results['used_correlation_data'],
                 used_news_sentiment=prediction_results['used_news_sentiment'],
                 used_economic_indicators=prediction_results['used_economic_indicators'],
-                used_anomaly_detection=prediction_results.get('used_anomaly_detection', False)
+                used_anomaly_detection=prediction_results.get('used_anomaly_detection', False),
+                mean_square_error=prediction_results.get('mean_square_error'),
+                root_mean_square_error=prediction_results.get('root_mean_square_error'),
+                mean_absolute_error=prediction_results.get('mean_absolute_error')
             )
             prediction.save()
 
@@ -485,6 +488,80 @@ class PredictionService:
                 f"Horizon: {horizon_factor:.1f}, Anomaly: {anomaly_factor:.1f} => Final: {confidence_score:.1f}"
             )
 
+            # Calculate error metrics
+            # For backtest, use the most recent data points
+            # This simulates how our model would have performed if we used it in the past
+            backtest_window = min(30, max(5, len(exchange_df) // 5))  # Use at least 5 points, up to 30
+
+            # Always calculate error metrics with whatever data we have
+            logger.info(f"Calculating error metrics with {len(exchange_df)} data points, " +
+                        f"backtest window of {backtest_window}")
+
+            # Make sure we have at least 3 data points for minimal backtesting
+            if len(exchange_df) >= 3:
+                # Split data for backtest - use at least 60% for training if possible
+                train_size = max(2, len(exchange_df) - backtest_window)
+                train_data = close_series[:train_size]
+                test_data = close_series[train_size:]
+
+                logger.info(f"Backtesting with {len(train_data)} training points and {len(test_data)} test points")
+
+                # Calculate drift from training data - use at least the last 2 points
+                if len(train_data) > 1:
+                    train_window = min(30, len(train_data))
+                    backtest_drift = np.mean(np.diff(train_data[-train_window:]))
+                else:
+                    backtest_drift = 0
+
+                # Make predictions for test period
+                backtest_predictions = []
+                for i in range(len(test_data)):
+                    if i == 0:
+                        # First prediction based on last training value
+                        pred = train_data[-1] + backtest_drift
+                    else:
+                        # Subsequent predictions based on prior prediction
+                        pred = backtest_predictions[-1] + backtest_drift
+                    backtest_predictions.append(pred)
+
+                # Calculate error metrics
+                errors = np.array(backtest_predictions) - np.array(test_data)
+                mean_square_error = np.mean(errors ** 2)
+                root_mean_square_error = np.sqrt(mean_square_error)
+                mean_absolute_error = np.mean(np.abs(errors))
+
+                # Normalize errors relative to the average price for better interpretability
+                avg_price = np.mean(close_series)
+                norm_mse = mean_square_error / (avg_price ** 2)  # Normalized MSE
+                norm_rmse = root_mean_square_error / avg_price   # Normalized RMSE as percentage
+                norm_mae = mean_absolute_error / avg_price       # Normalized MAE as percentage
+
+                logger.info(
+                    f"Backtest error metrics: MSE={mean_square_error:.6f}, "
+                    f"RMSE={root_mean_square_error:.6f}, MAE={mean_absolute_error:.6f}"
+                )
+                logger.info(
+                    f"Normalized error metrics: MSE={norm_mse:.6f}, "
+                    f"RMSE={norm_rmse:.6f} ({norm_rmse*100:.2f}%), MAE={norm_mae:.6f} ({norm_mae*100:.2f}%)"
+                )
+            else:
+                # Not enough data for backtest, but still provide error estimate based on volatility
+                logger.warning("Insufficient data for proper backtest error calculation. Using volatility-based estimate.")
+
+                # Calculate error metrics based on historical volatility
+                volatility = np.std(np.diff(close_series)) if len(close_series) > 1 else 0.001
+                avg_price = np.mean(close_series)
+
+                # Estimated errors based on volatility (empirical approximation)
+                mean_square_error = volatility ** 2  # Variance
+                root_mean_square_error = volatility
+                mean_absolute_error = volatility * 0.8  # Empirical relationship for normal-like distributions
+
+                logger.info(
+                    f"Volatility-based error metrics: MSE={mean_square_error:.6f}, "
+                    f"RMSE={root_mean_square_error:.6f}, MAE={mean_absolute_error:.6f}"
+                )
+
             return {
                 'mean_predictions': mean_predictions,
                 'lower_bound': lower_bound,
@@ -496,7 +573,10 @@ class PredictionService:
                 'used_correlation_details': used_correlation_details,
                 'used_news_sentiment': used_news,
                 'used_economic_indicators': used_econ,
-                'used_anomaly_detection': used_anomalies
+                'used_anomaly_detection': used_anomalies,
+                'mean_square_error': float(mean_square_error) if mean_square_error is not None else None,
+                'root_mean_square_error': float(root_mean_square_error) if root_mean_square_error is not None else None,
+                'mean_absolute_error': float(mean_absolute_error) if mean_absolute_error is not None else None
             }
 
         except Exception as e:
@@ -557,6 +637,48 @@ class PredictionService:
                     "used_in_prediction": True
                 })
 
+            # Create attributes with model accuracy metrics
+            attributes = {
+                "base_currency": prediction.base_currency,
+                "target_currency": prediction.target_currency,
+                "current_rate": prediction.current_rate,
+                "change_percent": prediction.change_percent,
+                "confidence_score": prediction.confidence_score,
+                "model_version": prediction.model_version,
+                "input_data_range": prediction.input_data_range,
+                "influencing_factors": influencing_factors,
+                "prediction_values": prediction_values
+            }
+
+            # Add error metrics if available
+            if hasattr(prediction, 'mean_square_error') and prediction.mean_square_error is not None:
+                attributes["mean_square_error"] = prediction.mean_square_error
+            if hasattr(prediction, 'root_mean_square_error') and prediction.root_mean_square_error is not None:
+                attributes["root_mean_square_error"] = prediction.root_mean_square_error
+            if hasattr(prediction, 'mean_absolute_error') and prediction.mean_absolute_error is not None:
+                attributes["mean_absolute_error"] = prediction.mean_absolute_error
+
+            # Add structured model accuracy metrics with description
+            has_mse = hasattr(prediction, 'mean_square_error') and prediction.mean_square_error is not None
+            has_rmse = hasattr(prediction, 'root_mean_square_error') and prediction.root_mean_square_error is not None
+            has_mae = hasattr(prediction, 'mean_absolute_error') and prediction.mean_absolute_error is not None
+
+            if has_mse and has_rmse and has_mae:
+                # Calculate error percentage based on current rate
+                error_pct = 0
+                if prediction.current_rate > 0:
+                    error_pct = 100 * (prediction.root_mean_square_error / prediction.current_rate)
+
+                error_msg = f"RMSE represents approximately {error_pct:.2f}% of current rate."
+                description = f"Historical backtesting error metrics. {error_msg}"
+
+                attributes["model_accuracy"] = {
+                    "mean_square_error": prediction.mean_square_error,
+                    "root_mean_square_error": prediction.root_mean_square_error,
+                    "mean_absolute_error": prediction.mean_absolute_error,
+                    "description": description
+                }
+
             # Create ADAGE 3.0 response
             response = {
                 "data_source": "Currency Exchange Warning System",
@@ -574,17 +696,7 @@ class PredictionService:
                             "timezone": "UTC"
                         },
                         "event_type": "exchange_rate_forecast",
-                        "attributes": {
-                            "base_currency": prediction.base_currency,
-                            "target_currency": prediction.target_currency,
-                            "current_rate": prediction.current_rate,
-                            "change_percent": prediction.change_percent,
-                            "confidence_score": prediction.confidence_score,
-                            "model_version": prediction.model_version,
-                            "input_data_range": prediction.input_data_range,
-                            "influencing_factors": influencing_factors,
-                            "prediction_values": prediction_values
-                        }
+                        "attributes": attributes
                     }
                 ]
             }

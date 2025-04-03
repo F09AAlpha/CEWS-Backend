@@ -111,6 +111,17 @@ class PredictionWorkflowTest(TestCase):
                 self.assertIn('mean', prediction_values[0])
                 self.assertIn('lower_bound', prediction_values[0])
                 self.assertIn('upper_bound', prediction_values[0])
+
+                # Check error metrics are present
+                self.assertIn('mean_square_error', attrs)
+                self.assertIn('root_mean_square_error', attrs)
+                self.assertIn('mean_absolute_error', attrs)
+
+                # Check model_accuracy is present
+                if 'model_accuracy' in attrs:
+                    accuracy = attrs['model_accuracy']
+                    self.assertIn('mean_square_error', accuracy)
+                    self.assertIn('description', accuracy)
         except Exception as e:
             self.fail(f"Test failed with error: {str(e)}")
 
@@ -241,6 +252,7 @@ class PredictionWorkflowTest(TestCase):
         1. Prediction dates are sequential and in the future
         2. Confidence score is within valid range [0, 100]
         3. Prediction values (mean, lower_bound, upper_bound) maintain proper relationship
+        4. Error metrics exist and have proper relationships
         """
         kwargs = {'base': self.base_currency, 'target': self.target_currency}
         path = reverse('currency_prediction', kwargs=kwargs)
@@ -295,6 +307,30 @@ class PredictionWorkflowTest(TestCase):
                     self.assertLessEqual(val['lower_bound'], val['mean'])
                     self.assertLessEqual(val['mean'], val['upper_bound'])
 
+        # Check error metrics if they exist
+        if all(metric in attrs for metric in ['mean_square_error', 'root_mean_square_error', 'mean_absolute_error']):
+            # Check values are non-negative
+            if attrs['mean_square_error'] is not None:
+                self.assertGreaterEqual(attrs['mean_square_error'], 0)
+
+            if attrs['root_mean_square_error'] is not None:
+                self.assertGreaterEqual(attrs['root_mean_square_error'], 0)
+
+            if attrs['mean_absolute_error'] is not None:
+                self.assertGreaterEqual(attrs['mean_absolute_error'], 0)
+
+            # Check MSE >= MAE relationship (a common property)
+            if attrs['mean_square_error'] is not None and attrs['mean_absolute_error'] is not None:
+                self.assertGreaterEqual(attrs['mean_square_error'], attrs['mean_absolute_error'] ** 2)
+
+        # Check model_accuracy object if it exists
+        if 'model_accuracy' in attrs:
+            model_accuracy = attrs['model_accuracy']
+            self.assertIn('description', model_accuracy)
+            self.assertIn('mean_square_error', model_accuracy)
+            self.assertIn('root_mean_square_error', model_accuracy)
+            self.assertIn('mean_absolute_error', model_accuracy)
+
     def _create_mock_prediction(self):
         """Helper to create a mock prediction object."""
         # Use a MagicMock that mimics the CurrencyPrediction model
@@ -341,5 +377,10 @@ class PredictionWorkflowTest(TestCase):
         mock_prediction.used_news_sentiment = True
         mock_prediction.used_economic_indicators = True
         mock_prediction.used_anomaly_detection = True
+
+        # Add error metrics
+        mock_prediction.mean_square_error = 0.0002
+        mock_prediction.root_mean_square_error = 0.014
+        mock_prediction.mean_absolute_error = 0.012
 
         return mock_prediction

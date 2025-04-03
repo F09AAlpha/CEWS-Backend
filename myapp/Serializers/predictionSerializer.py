@@ -20,6 +20,16 @@ class PredictionValueSerializer(serializers.Serializer):
     upper_bound = serializers.FloatField()
 
 
+class ModelAccuracySerializer(serializers.Serializer):
+    """
+    Serializer for model accuracy metrics
+    """
+    mean_square_error = serializers.FloatField(allow_null=True)
+    root_mean_square_error = serializers.FloatField(allow_null=True)
+    mean_absolute_error = serializers.FloatField(allow_null=True)
+    description = serializers.CharField(default="Calculated from historical backtest", required=False)
+
+
 class PredictionTimeObjectSerializer(serializers.Serializer):
     """
     Serializer for forecast time object in ADAGE 3.0 format
@@ -42,6 +52,14 @@ class PredictionAttributesSerializer(serializers.Serializer):
     input_data_range = serializers.CharField()
     influencing_factors = PredictionFactorSerializer(many=True)
     prediction_values = PredictionValueSerializer(many=True)
+
+    # Error metrics fields (backward compatibility)
+    mean_square_error = serializers.FloatField(allow_null=True, required=False)
+    root_mean_square_error = serializers.FloatField(allow_null=True, required=False)
+    mean_absolute_error = serializers.FloatField(allow_null=True, required=False)
+
+    # New structured accuracy metrics
+    model_accuracy = ModelAccuracySerializer(required=False)
 
 
 class PredictionEventSerializer(serializers.Serializer):

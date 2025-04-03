@@ -89,6 +89,21 @@ class TestPredictionService(unittest.TestCase):
             self.assertLess(prediction_results['lower_bound'][date], prediction_results['mean_predictions'][date])
             self.assertLess(prediction_results['mean_predictions'][date], prediction_results['upper_bound'][date])
 
+        # Verify error metrics are calculated
+        self.assertIn('mean_square_error', prediction_results)
+        self.assertIn('root_mean_square_error', prediction_results)
+        self.assertIn('mean_absolute_error', prediction_results)
+
+        # If error metrics aren't None, verify they have sensible values
+        if prediction_results['mean_square_error'] is not None:
+            self.assertGreaterEqual(prediction_results['mean_square_error'], 0)
+
+        if prediction_results['root_mean_square_error'] is not None:
+            self.assertGreaterEqual(prediction_results['root_mean_square_error'], 0)
+
+        if prediction_results['mean_absolute_error'] is not None:
+            self.assertGreaterEqual(prediction_results['mean_absolute_error'], 0)
+
     @patch('myapp.Models.predictionModel.CurrencyPrediction.objects')
     def test_get_latest_prediction(self, mock_objects):
         """Test getting the latest prediction."""
@@ -122,7 +137,10 @@ class TestPredictionService(unittest.TestCase):
             'used_correlation_data': False,
             'used_news_sentiment': False,
             'used_economic_indicators': False,
-            'used_anomaly_detection': False
+            'used_anomaly_detection': False,
+            'mean_square_error': 0.0002,
+            'root_mean_square_error': 0.014,
+            'mean_absolute_error': 0.012
         }
         mock_predict.return_value = prediction_data
 

@@ -21,6 +21,14 @@ class CurrencyPrediction(models.Model):
     lower_bound = models.JSONField(default=dict, help_text="Lower bound (10th percentile) for each forecasted day")
     upper_bound = models.JSONField(default=dict, help_text="Upper bound (90th percentile) for each forecasted day")
 
+    # Error metrics
+    mean_square_error = models.FloatField(
+        null=True, blank=True, help_text="MSE of the prediction model")
+    root_mean_square_error = models.FloatField(
+        null=True, blank=True, help_text="Root mean square error of the prediction model")
+    mean_absolute_error = models.FloatField(
+        null=True, blank=True, help_text="Mean absolute error of the prediction model")
+
     # Metadata and additional info
     model_version = models.CharField(max_length=50, help_text="Version of the model used")
     confidence_score = models.FloatField(help_text="Confidence score of the prediction")

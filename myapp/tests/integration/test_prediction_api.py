@@ -41,7 +41,10 @@ class PredictionAPITestCase(TestCase):
             used_correlation_data=True,
             used_news_sentiment=True,
             used_economic_indicators=True,
-            used_anomaly_detection=True
+            used_anomaly_detection=True,
+            mean_square_error=0.0002,
+            root_mean_square_error=0.014,
+            mean_absolute_error=0.012
         )
         # Set primary key for the mock object
         self.mock_prediction.pk = 1
@@ -213,3 +216,32 @@ class PredictionAPITestCase(TestCase):
                 break
 
         self.assertIsNotNone(anomaly_factor)
+
+    @patch('myapp.Service.predictionService.PredictionService.create_prediction')
+    def test_error_metrics_in_response(self, mock_create_prediction):
+        """Test that error metrics are included in the API response."""
+        # Setup mock with error metrics
+        mock_prediction = self.mock_prediction
+        mock_create_prediction.return_value = mock_prediction
+
+        # Make request
+        url = f"{self.base_url}?refresh=true"
+        response = self.client.get(url)
+
+        # Check response
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+
+        # Verify error metrics are in the response
+        attrs = data['events'][0]['attributes']
+        self.assertIn('mean_square_error', attrs)
+        self.assertIn('root_mean_square_error', attrs)
+        self.assertIn('mean_absolute_error', attrs)
+
+        # Verify model_accuracy object is present with correct structure
+        self.assertIn('model_accuracy', attrs)
+        model_accuracy = attrs['model_accuracy']
+        self.assertIn('mean_square_error', model_accuracy)
+        self.assertIn('root_mean_square_error', model_accuracy)
+        self.assertIn('mean_absolute_error', model_accuracy)
+        self.assertIn('description', model_accuracy)
