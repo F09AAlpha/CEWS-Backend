@@ -21,6 +21,9 @@ RUN apt-get update \
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install wkhtmltopdf 
+RUN apt-get update && apt-get install -y wkhtmltopdf
+
 # Expose the correct port
 EXPOSE 3000
 
