@@ -8,6 +8,7 @@ from django.db import transaction
 from myapp.Serializers.economicIndicatorsSerializer import TimeObjectSerializer
 from myapp.models import AnnualEconomicIndicator, MonthlyEconomicIndicator
 from django.conf import settings
+from django.db.models import Q
 
 logger = logging.getLogger(__name__)
 
@@ -213,8 +214,12 @@ class MonthlyIndicatorService:
             else:
                 logger.info("No new monthly economic indicator data to store.")
 
-            # Retrieve the lates stored record
-            latest_stored = MonthlyEconomicIndicator.objects.order_by("-date").first()
+            # Retrieve the latest stored record with non-null values for the required attributes
+            latest_stored = MonthlyEconomicIndicator.objects.filter(
+                Q(cpi__isnull=False) & Q(unemployment_rate__isnull=False) & 
+                Q(federal_funds_rate__isnull=False) & Q(treasury_yield__isnull=False)
+            ).order_by('-date').first()
+
             if not latest_stored:
                 raise Exception("No economic indicators found in the database after update")
 
