@@ -221,7 +221,7 @@ jobs:
           docker-compose up -d
           docker-compose exec -T web coverage run manage.py test myapp.tests --keepdb
           docker-compose exec -T web coverage html
-          docker-compose exec -T web wkhtmltopdf coverage_html/index.html coverage_report.pdf
+          docker-compose exec web wkhtmltopdf --load-error-handling ignore file:///app/coverage_html/index.html coverage_report.pdf
 
       - name: Upload test coverage reports
         uses: actions/upload-artifact@v4.6.2
