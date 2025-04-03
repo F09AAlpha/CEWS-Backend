@@ -3,7 +3,7 @@ from myapp.Models.exchangeRateAlertModel import ExchangeRateAlert
 
 
 class ExchangeRateAlertSerializer(serializers.ModelSerializer):
-    alert_id = serializers.CharField(required=False, allow_null=True) 
+    alert_id = serializers.CharField(required=False, allow_null=True)
 
     class Meta:
         model = ExchangeRateAlert

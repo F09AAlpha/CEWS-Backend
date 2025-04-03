@@ -2,7 +2,7 @@ import json
 from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework import status
-from myapp.Models.exchangeRateAlertModel import ExchangeRateAlert
+
 
 class RegisterAlertIntegrationTest(APITestCase):
     """Integration tests for the alert registration API"""

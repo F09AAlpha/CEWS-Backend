@@ -5,6 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework.exceptions import ErrorDetail
 
+
 class RegisterAlertViewTest(TestCase):
 
     @patch("myapp.Serializers.exchangeRateAlertSerializer")
