@@ -221,7 +221,7 @@ jobs:
           docker-compose up -d
           docker-compose run --rm web coverage run manage.py test myapp.tests --keepdb
           docker-compose run --rm web coverage html
-          docker-compose run --rm web wkhtmltopdf file:///app/coverage_html/index.html coverage_report.pdf
+          docker-compose run --rm web wkhtmltopdf --enable-local-file-access file:///myapp/htmlcov/index.html coverage_report.pdf
 
       - name: Upload test coverage reports
         uses: actions/upload-artifact@v4.6.2
