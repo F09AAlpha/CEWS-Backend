@@ -96,7 +96,7 @@ jobs:
   # Integration Tests
   integration-tests:
     runs-on: ubuntu-latest
-    needs: test-unit
+    needs: unit-tests
           
     steps:
       - name: Checkout code
@@ -126,7 +126,7 @@ jobs:
     # End-to-End tests
   e2e-tests:
     runs-on: ubuntu-latest
-    needs: test-integration
+    needs: integration-tests
           
     steps:
       - name: Checkout code
