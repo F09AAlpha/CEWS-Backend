@@ -216,7 +216,7 @@ class MonthlyIndicatorService:
 
             # Retrieve the latest stored record with non-null values for the required attributes
             latest_stored = MonthlyEconomicIndicator.objects.filter(
-                Q(cpi__isnull=False) & Q(unemployment_rate__isnull=False) & 
+                Q(cpi__isnull=False) & Q(unemployment_rate__isnull=False) &
                 Q(federal_funds_rate__isnull=False) & Q(treasury_yield__isnull=False)
             ).order_by('-date').first()
 
