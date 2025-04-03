@@ -10,6 +10,7 @@ from myapp.Views.graphView import (GraphView_lastweek, GraphView_lastmonth,
                                    GraphView_last6months, GraphView_lastyear, GraphView_last5years)
 from myapp.Views.registerExchangeRateAlertView import RegisterAlertView
 from myapp.Views.anomalyDetectionView import anomaly_detection
+from myapp.Views.correlationView import CorrelationAnalysisView
 
 urlpatterns = [
     path('', HealthCheckView.as_view(), name='health-check'),
@@ -27,6 +28,11 @@ urlpatterns = [
         'v1/analytics/volatility/<str:base>/<str:target>/',
         VolatilityAnalysisView.as_view(),
         name='volatility_analysis',
+    ),
+    path(
+        'v2/analytics/correlation/<str:base>/<str:target>/',
+        CorrelationAnalysisView.as_view(),
+        name='correlation_analysis',
     ),
     path('v1/economic/indicators/annual/', StoreAnnualIndicatorsView.as_view(), name='store-annual-economic-indicators'),
     path('v1/economic/indicators/monthly/', StoreMonthlyIndicatorsView.as_view(), name='store-monthly-economic-indicators'),
