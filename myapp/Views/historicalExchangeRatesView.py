@@ -8,6 +8,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from dotenv import load_dotenv
 import psycopg2.extras
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -22,8 +25,12 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
             f"&to_symbol={to_currency}&outputsize=full"
             f"&apikey={os.environ.get('ALPHA_VANTAGE_API_KEY')}"
         )
-        response = requests.get(API_URL)
-        response.raise_for_status()
+        try:
+            response = requests.get(API_URL)
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error connecting to Alpha Vantage API: {str(e)}")
+            return Response({"error": "Failed to fetch data from external API", "details": str(e)}, status=502)
 
         data = response.json()
         time_series = data.get("Time Series FX (Daily)", {})
@@ -34,6 +41,7 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
 
         with connection.cursor() as cursor:
             if not time_series:
+                logger.error("Error fetching currency rates -- Invalid Currency")
                 return Response({"error": "BAD REQUEST -- Currency not found"}, status=400)
 
             # Check if the table exists
