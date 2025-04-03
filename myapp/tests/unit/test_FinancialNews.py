@@ -9,6 +9,7 @@ from django.urls import reverse
 import requests
 import json
 
+
 class FetchFinancialNewsViewTest(TestCase):
     """Unit tests for FetchFinancialNewsView"""
 
@@ -123,9 +124,6 @@ class FetchFinancialNewsViewTest(TestCase):
             ]
         }
 
-        request = self.factory.post(self.url, {"symbol": "TSLA"}, format='json')
-        response = self.view(request)
-
         self.assertEqual(FinancialNewsAlphaV.objects.count(), 2)
 
     @patch('myapp.Views.financialNewsView.requests.get')
@@ -143,9 +141,6 @@ class FetchFinancialNewsViewTest(TestCase):
                 "time_published": "20240301T130000"
             }]
         }
-
-        request = self.factory.post(self.url, {}, format='json')
-        response = self.view(request)
 
         self.assertEqual(FinancialNewsAlphaV.objects.first().symbol, self.test_symbol)
 

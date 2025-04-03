@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from myapp.Models.financialNewsModel import FinancialNewsAlphaV
 from rest_framework import status
 
+
 class FetchFinancialNewsIntegrationTest(APITestCase):
     """Integration tests for the Financial News API endpoint"""
 
@@ -37,7 +38,7 @@ class FetchFinancialNewsIntegrationTest(APITestCase):
 
         response = self.client.post(
             self.url,
-            data=json.dumps({"symbol": self.symbol}),  
+            data=json.dumps({"symbol": self.symbol}),
             content_type="application/json"
         )
 
@@ -52,7 +53,7 @@ class FetchFinancialNewsIntegrationTest(APITestCase):
 
         response = self.client.post(
             self.url,
-            data=json.dumps({"symbol": self.symbol}),  
+            data=json.dumps({"symbol": self.symbol}),
             content_type="application/json"
         )
 
@@ -67,7 +68,7 @@ class FetchFinancialNewsIntegrationTest(APITestCase):
 
         response = self.client.post(
             self.url,
-            data=json.dumps({"symbol": self.symbol}),  
+            data=json.dumps({"symbol": self.symbol}),
             content_type="application/json"
         )
 
@@ -93,7 +94,7 @@ class FetchFinancialNewsIntegrationTest(APITestCase):
 
         response = self.client.post(
             self.url,
-            data=json.dumps({"symbol": self.symbol}),  
+            data=json.dumps({"symbol": self.symbol}),
             content_type="application/json"
         )
 
