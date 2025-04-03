@@ -192,6 +192,36 @@ jobs:
           docker-compose exec -T web python manage.py test myapp/tests/e2e --keepdb
           docker-compose down
 
+  # Generate a test coverage pdf document
+  test-coverage-report:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Start Docker Containers
+        run: docker-compose up -d
+
+      - name: Run tests and generate reports
+        run: |
+          docker-compose exec -T web coverage run manage.py test myapp.tests
+          docker-compose exec -T web coverage html
+          docker-compose exec -T web wkhtmltopdf coverage_html/index.html coverage_report.pdf
+
+      - name: Upload test coverage reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-coverage-reports
+          path: |
+            coverage_html/
+            coverage_report.pdf
+
+      - name: Stop Docker Containers
+        run: docker-compose down
+
+
   # ECR deployment job
   deploy-to-ecr:
     runs-on: ubuntu-latest
