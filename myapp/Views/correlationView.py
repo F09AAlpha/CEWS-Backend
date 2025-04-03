@@ -8,6 +8,12 @@ from django.utils import timezone
 from django.core.cache import cache
 from myapp.Service.correlationService import CorrelationService
 from myapp.Serializers.correlationSerializer import CorrelationAnalysisSerializer
+from myapp.Exceptions.exceptions import (
+    InvalidCurrencyCode,
+    InvalidCurrencyPair,
+    CorrelationDataUnavailable,
+    ProcessingError
+)
 
 logger = logging.getLogger(__name__)
 
@@ -38,24 +44,15 @@ class CorrelationAnalysisView(APIView):
                     )
 
             # Validate currency codes
-            if not self._validate_currency_code(base) or not self._validate_currency_code(target):
-                return self._error_response(
-                    "InvalidCurrencyCode",
-                    "Currency codes must be 3 alphabetic characters",
-                    status.HTTP_400_BAD_REQUEST
-                )
+            self.validate_currency_code(base)
+            self.validate_currency_code(target)
 
             # Standardize currency codes
             base = base.upper()
             target = target.upper()
 
             # Check for same currency
-            if base == target:
-                return self._error_response(
-                    "InvalidCurrencyPair",
-                    "Base and target currencies must be different",
-                    status.HTTP_400_BAD_REQUEST
-                )
+            self.validate_currency_pair(base, target)
 
             # Get lookback_days parameter (default: 90)
             try:
@@ -99,12 +96,19 @@ class CorrelationAnalysisView(APIView):
                             base, target, lookback_days
                         )
                         logger.info(f"Completed correlation analysis for {base}/{target}")
-                    except ValueError as e:
-                        logger.warning(f"ValueError in correlation analysis: {str(e)}")
+                    except CorrelationDataUnavailable as e:
+                        logger.warning(f"No data available for correlation analysis: {str(e)}")
                         return self._error_response(
                             "NoDataAvailable",
                             str(e),
                             status.HTTP_404_NOT_FOUND
+                        )
+                    except ProcessingError as e:
+                        logger.error(f"Processing error in correlation analysis: {str(e)}\n{traceback.format_exc()}")
+                        return self._error_response(
+                            "ProcessingError",
+                            f"Error processing correlation data: {str(e)}",
+                            status.HTTP_500_INTERNAL_SERVER_ERROR
                         )
                     except Exception as e:
                         logger.error(f"Error in correlation analysis: {str(e)}\n{traceback.format_exc()}")
@@ -129,6 +133,13 @@ class CorrelationAnalysisView(APIView):
                             )
                 else:
                     logger.info(f"Using existing correlation analysis for {base}/{target}")
+            except CorrelationDataUnavailable as e:
+                logger.warning(f"No correlation data available: {str(e)}")
+                return self._error_response(
+                    "NoDataAvailable",
+                    str(e),
+                    status.HTTP_404_NOT_FOUND
+                )
             except Exception as e:
                 logger.error(f"Unexpected error retrieving correlation data: {str(e)}\n{traceback.format_exc()}")
                 if fallback_mode:
@@ -183,6 +194,20 @@ class CorrelationAnalysisView(APIView):
                     status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
 
+        except InvalidCurrencyCode as e:
+            logger.warning(f"Invalid currency code: {str(e)}")
+            return self._error_response(
+                "InvalidCurrencyCode",
+                str(e),
+                status.HTTP_400_BAD_REQUEST
+            )
+        except InvalidCurrencyPair as e:
+            logger.warning(f"Invalid currency pair: {str(e)}")
+            return self._error_response(
+                "InvalidCurrencyPair",
+                str(e),
+                status.HTTP_400_BAD_REQUEST
+            )
         except Exception as e:
             logger.error(f"Unexpected error in correlation analysis: {str(e)}\n{traceback.format_exc()}")
             return self._error_response(
@@ -191,9 +216,17 @@ class CorrelationAnalysisView(APIView):
                 status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    def _validate_currency_code(self, code):
+    def validate_currency_code(self, code):
         """Validate that code is a 3-letter currency code"""
-        return bool(re.match(r'^[A-Za-z]{3}$', code))
+        if not re.match(r'^[A-Za-z]{3}$', code):
+            raise InvalidCurrencyCode("Currency codes must be 3 alphabetic characters")
+        return True
+
+    def validate_currency_pair(self, base, target):
+        """Validate that base and target are different"""
+        if base == target:
+            raise InvalidCurrencyPair("Base and target currencies must be different")
+        return True
 
     def _error_response(self, error_type, message, status_code, details=None):
         """Create an ADAGE 3.0 compliant error response"""

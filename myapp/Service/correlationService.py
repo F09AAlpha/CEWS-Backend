@@ -8,6 +8,7 @@ from .alpha_vantage import AlphaVantageService
 from myapp.Models.currencyNewsModel import CurrencyNewsAlphaV
 from myapp.Models.economicIndicatorsModel import MonthlyEconomicIndicator
 from myapp.Models.correlationModel import CorrelationResult
+from myapp.Exceptions.exceptions import CorrelationDataUnavailable
 import traceback
 
 logger = logging.getLogger(__name__)
@@ -1219,23 +1220,38 @@ class CorrelationService:
 
     def get_latest_correlation(self, base_currency, target_currency):
         """
-        Retrieve the latest correlation analysis for the specified currency pair.
+        Get the latest correlation analysis result for a currency pair.
 
         Args:
             base_currency (str): Base currency code
             target_currency (str): Target currency code
 
         Returns:
-            CorrelationResult: Latest correlation result or None if not found
+            CorrelationResult: Latest correlation result for the currency pair
+
+        Raises:
+            CorrelationDataUnavailable: If no correlation data is available
         """
         try:
-            return CorrelationResult.objects.filter(
-                base_currency=base_currency.upper(),
-                target_currency=target_currency.upper()
+            # Get the latest result from the database, ordered by analysis_date
+            result = CorrelationResult.objects.filter(
+                base_currency=base_currency,
+                target_currency=target_currency
             ).order_by('-analysis_date').first()
+
+            if result is None:
+                raise CorrelationDataUnavailable(f"No correlation data available for {base_currency}/{target_currency}")
+
+            return result
+
+        except CorrelationDataUnavailable:
+            # Pass through our custom exception
+            raise
         except Exception as e:
-            logger.error(f"Error retrieving latest correlation: {str(e)}")
-            return None
+            logger.error(f"Error retrieving correlation data: {str(e)}")
+            raise CorrelationDataUnavailable(
+                f"Error retrieving correlation data for {base_currency}/{target_currency}: {str(e)}"
+            )
 
     def format_adage_response(self, correlation_result):
         """
