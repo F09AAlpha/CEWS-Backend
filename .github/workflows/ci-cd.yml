@@ -201,8 +201,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Start Docker Containers
-        run: docker-compose up -d
+      - name: Install docker-compose
+        run: sudo apt-get update && sudo apt-get install -y docker-compose
+
+      # Create test environment file with secrets
+      - name: Create .env file for testing
+        run: |
+          cat > .env << EOF
+          DB_NAME=${{ secrets.TEST_DB_NAME }}
+          DB_USER=${{ secrets.TEST_DB_USER }}
+          DB_PASSWORD=${{ secrets.TEST_DB_PASSWORD }}
+          DB_HOST=${{ secrets.TEST_DB_HOST }}
+          DB_PORT=${{ secrets.TEST_DB_PORT }}
+          ALPHA_VANTAGE_API_KEY=${{ secrets.ALPHA_VANTAGE_API_KEY }}
+          EOF
 
       - name: Run tests and generate reports
         run: |
