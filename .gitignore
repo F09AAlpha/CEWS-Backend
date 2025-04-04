@@ -7,6 +7,9 @@ venv/
 # Ignore environment variables
 .env
 
+# Ignore test coverage data
+.coverage
+
 # Ignore the SQLite database
 db.sqlite3
 
