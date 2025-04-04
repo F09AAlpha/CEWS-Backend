@@ -229,6 +229,17 @@ jobs:
           DROP DATABASE IF EXISTS test_${{ secrets.TEST_DB_NAME }};
           "
 
+      - name: Run tests and generate coverage report
+        run: |
+          docker-compose up -d
+          docker-compose run --rm web coverage run manage.py test myapp.tests --keepdb
+          docker-compose run --rm web coverage html
+
+      - name: Install wkhtmltopdf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wkhtmltopdf
+          
       - name: Convert HTML coverage report to PDF
         run: |
           wkhtmltopdf htmlcov/index.html test_coverage_report.pdf
