@@ -22,9 +22,55 @@ class CurrencyPredictionView(APIView):
     """
 
     def get(self, request, base, target):
+        """
+        Get currency exchange rate prediction.
+
+        Parameters:
+        - base: Base currency code (3 letters)
+        - target: Target currency code (3 letters)
+
+        Query parameters:
+        - refresh: Whether to refresh the prediction (default: false)
+        - forecast_horizon: Number of days to forecast (default: 7)
+        - model: Model type to use - 'arima', 'statistical', or 'auto' (default: 'arima')
+        - confidence: Confidence level for prediction intervals (50-99, default: 80)
+          Lower values (e.g., 70-80) give tighter, more precise bounds
+          Higher values (e.g., 90-95) give wider bounds with more certainty
+
+        Returns:
+        - ADAGE 3.0 compliant prediction response
+        """
         try:
             # Check if we should refresh the prediction
             refresh_mode = request.query_params.get('refresh', 'false').lower() == 'true'
+
+            # Check if we should use ARIMA model
+            model_type = request.query_params.get('model', 'arima').lower()
+            use_arima = model_type in ['auto', 'arima']
+
+            # Get confidence level parameter (default: 80)
+            try:
+                confidence_level = int(request.query_params.get('confidence', 80))
+                if confidence_level < 50 or confidence_level > 99:
+                    return self._error_response(
+                        "InvalidParameter",
+                        "confidence must be between 50 and 99",
+                        status.HTTP_400_BAD_REQUEST
+                    )
+            except ValueError:
+                return self._error_response(
+                    "InvalidParameter",
+                    "confidence must be an integer",
+                    status.HTTP_400_BAD_REQUEST
+                )
+
+            # If model_type is not valid, return error
+            if model_type not in ['auto', 'arima', 'statistical']:
+                return self._error_response(
+                    "InvalidParameter",
+                    "model must be one of: auto, arima, statistical",
+                    status.HTTP_400_BAD_REQUEST
+                )
 
             # Get forecast_horizon parameter (default: 7 days)
             try:
@@ -65,7 +111,9 @@ class CurrencyPredictionView(APIView):
             try:
                 # Get or create prediction
                 prediction = prediction_service.create_prediction(
-                    base, target, forecast_horizon, refresh=refresh_mode
+                    base, target, forecast_horizon, refresh=refresh_mode,
+                    use_arima=use_arima if model_type != 'statistical' else False,
+                    confidence_level=confidence_level
                 )
 
                 # Format response according to ADAGE 3.0

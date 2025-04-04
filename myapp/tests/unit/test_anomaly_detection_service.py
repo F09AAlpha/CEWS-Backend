@@ -138,9 +138,12 @@ class TestAnomalyDetectionService(unittest.TestCase):
         # Mock Alpha Vantage service to raise an exception
         self.alpha_vantage_mock.get_exchange_rates.side_effect = Exception("API error")
 
-        # Expect exception to be wrapped
-        with self.assertRaises(ProcessingError):
+        # Expect ProcessingError when calling the method
+        with self.assertRaises(ProcessingError) as context:
             self.service.detect_anomalies()
+
+        # Verify the error message contains information about the API error
+        self.assertIn("API error", str(context.exception))
 
         # Verify logger was called
         mock_logger.error.assert_called()
