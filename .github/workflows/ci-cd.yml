@@ -93,13 +93,6 @@ jobs:
           docker-compose run --rm web coverage run manage.py test myapp.tests --keepdb
           docker-compose run --rm web coverage html
 
-      - name: Archive coverage report as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-coverage-html
-          path: htmlcov/
-          retention-days: 7
-
       - name: Stop Docker Containers
         run: docker-compose down
 
