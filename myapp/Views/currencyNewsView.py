@@ -6,7 +6,6 @@ import requests
 from django.utils.dateparse import parse_datetime
 from myapp.Models.currencyNewsModel import CurrencyNewsAlphaV
 from myapp.Serializers.currencyNewsSerializer import CurrencyNewsSerializer
-from rest_framework import generics
 import os
 import uuid
 from myapp.Serializers.currencyNewsSerializer import AdageNewsDatasetSerializer
@@ -97,56 +96,79 @@ class FetchCurrencyNewsView(APIView):
             )
 
 
-class CurrencyNewsListView(generics.ListAPIView):
-    serializer_class = CurrencyNewsSerializer
+class CurrencyNewsListView(APIView):
+    """
+    API view for retrieving currency news with optional filtering.
+    Returns data in ADAGE 3.0 Data Model format.
+    """
 
-    def get_queryset(self):
-        # Get query parameters
-        currency = self.request.query_params.get('currency')
-        sentiment = self.request.query_params.get('sentiment_score')
-        limit = self.request.query_params.get('limit', 10)  # Default to 10 if not specified
+    def get(self, request):
 
-        # Start with all objects
-        queryset = CurrencyNewsAlphaV.objects.all().order_by('-publication_date')
+        # Convert parameters
+        currency = request.query_params.get('currency', None)
+        sentiment_score = request.query_params.get('sentiment_score', None)
+        limit = int(request.query_params.get('limit', 10))
+
+        # Initialize queryset with all objects from CurrencyNewsAlphaV
+        queryset = CurrencyNewsAlphaV.objects.all()
 
         # Apply filters if provided
         if currency:
+            print(currency)
             queryset = queryset.filter(currency=currency)
-        if sentiment:
+
+        if sentiment_score:
             try:
-                sentiment_value = float(sentiment)
+                sentiment_value = float(sentiment_score)
                 # Filter sentiment_score within ±0.05 of the entered value
                 queryset = queryset.filter(
-                    sentiment_score__gte=sentiment_value - 0.05, sentiment_score__lte=sentiment_value + 0.05
+                    sentiment_score__gte=sentiment_value - 0.05,
+                    sentiment_score__lte=sentiment_value + 0.05
                 )
             except ValueError:
                 # Handle the case where sentiment is not a valid float
-                print(f"Invalid sentiment value: {sentiment}")  # Debugging
-
-        # Debugging: Print the generated SQL query
-        print(queryset.query)
+                return Response(
+                    {"detail": "Invalid sentiment value. Must be a number."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         # Limit results
-        return queryset[:int(limit)]
+        queryset = queryset[:limit]
 
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
+        # Handle empty results consistently
+        if not queryset.exists():
+            # Return empty ADAGE structure for consistency
+            current_time = datetime.now(timezone.utc)
+            date_str = current_time.strftime("%Y%m%d")
 
-        if not queryset:
-            return Response([], status=status.HTTP_200_OK)
+            # Get currency from parameters or use 'all' if not specified
+            currency_param = request.query_params.get('currency', currency or 'all')
+
+            empty_response = {
+                "data_source": "Alpha Vantage",
+                "dataset_type": "currency_news",
+                "dataset_id": f"currency-news-{currency_param}-{date_str}",
+                "time_object": {
+                    "timestamp": current_time.isoformat(),
+                    "timezone": "UTC"
+                },
+                "events": []
+            }
+
+            return Response(empty_response, status=status.HTTP_200_OK)
 
         # Convert to ADAGE 3.0 format
         current_time = datetime.now(timezone.utc)
         date_str = current_time.strftime("%Y%m%d")
 
         # Get currency from parameters or use 'all' if not specified
-        currency = request.query_params.get('currency', 'all')
+        currency_param = request.query_params.get('currency', currency or 'all')
 
         # Create the ADAGE 3.0 structure
         adage_data = {
             "data_source": "Alpha Vantage",
             "dataset_type": "currency_news",
-            "dataset_id": f"currency-news-{currency}-{date_str}",
+            "dataset_id": f"currency-news-{currency_param}-{date_str}",
             "time_object": {
                 "timestamp": current_time.isoformat(),
                 "timezone": "UTC"
@@ -184,8 +206,8 @@ class CurrencyNewsListView(generics.ListAPIView):
         # Validate the structure using the serializer
         adage_serializer = AdageNewsDatasetSerializer(data=adage_data)
         if adage_serializer.is_valid():
-            return Response(adage_serializer.data, status=status.HTTP_200_OK)
+            return Response(adage_serializer.validated_data, status=status.HTTP_200_OK)
         else:
             # Fall back to the regular serializer if the ADAGE structure is not valid
-            serializer = self.get_serializer(queryset, many=True)
+            serializer = CurrencyNewsSerializer(queryset, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
