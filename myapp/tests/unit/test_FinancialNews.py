@@ -130,7 +130,7 @@ class FetchFinancialNewsViewTest(TestCase):
         response = self.view(request)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(FinancialNewsAlphaV.objects.count(), 2)  
+        self.assertEqual(FinancialNewsAlphaV.objects.count(), 2)
 
     @patch('myapp.Views.financialNewsView.requests.get')
     def test_fetch_financial_news_adage_serializer_failure(self, mock_get):
