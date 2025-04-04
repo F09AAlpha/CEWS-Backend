@@ -66,7 +66,7 @@ class CurrencyNewsIntegrationTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['dataset_type'], "currency_news")
         self.assertEqual(len(response.data['events']), 1)
-        self.assertEqual(response.data['events'][0]['attributes']['title'], 
+        self.assertEqual(response.data['events'][0]['attributes']['title'],
                          "USD Strengthens Against Euro")
 
     def test_list_currency_news_filtering(self):
