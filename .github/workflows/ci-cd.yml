@@ -229,17 +229,17 @@ jobs:
           DROP DATABASE IF EXISTS test_${{ secrets.TEST_DB_NAME }};
           "
 
-      - name: Run tests and generate coverage report
+      - name: Convert HTML coverage report to PDF
         run: |
-          docker-compose up -d
-          docker-compose run --rm web coverage run manage.py test myapp.tests --keepdb
-          docker-compose run --rm web coverage html
+          wkhtmltopdf htmlcov/index.html test_coverage_report.pdf
 
-      - name: Archive coverage report as artifact
+      - name: Archive coverage reports as artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: test-coverage-html
-          path: htmlcov/
+          name: test-coverage-reports
+          path: |
+            htmlcov/
+            test_coverage_report.pdf
           retention-days: 7
 
       - name: Stop Docker Containers
