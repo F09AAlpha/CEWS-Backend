@@ -6,12 +6,12 @@ from myapp.Views.currencyNewsView import CurrencyNewsListView, FetchCurrencyNews
 from myapp.Views.exchangeRateLatestViews import CurrencyRateView
 from myapp.Views.historicalExchangeRatesView import FetchHistoricalCurrencyExchangeRates
 from myapp.Views.volatilityView import VolatilityAnalysisView
-from myapp.Views.graphView_lastweek import GraphView_lastweek
-from myapp.Views.graphView_lastmonth import GraphView_lastmonth
-from myapp.Views.graphView_last6months import GraphView_last6months
-from myapp.Views.graphView_lastyear import GraphView_lastyear
-from myapp.Views.graphView_last5years import GraphView_last5years
+from myapp.Views.graphView import (GraphView_lastweek, GraphView_lastmonth,
+                                   GraphView_last6months, GraphView_lastyear, GraphView_last5years)
 from myapp.Views.registerExchangeRateAlertView import RegisterAlertView
+from myapp.Views.anomalyDetectionView import anomaly_detection
+from myapp.Views.correlationView import CorrelationAnalysisView
+from myapp.Views.predictionView import CurrencyPredictionView
 
 urlpatterns = [
     path('', HealthCheckView.as_view(), name='health-check'),
@@ -19,7 +19,7 @@ urlpatterns = [
     path('v1/currency/<str:currency>', FetchCurrencyNewsView.as_view(), name='fetch-currency-news'),
     path('v1/news/events', CurrencyNewsListView.as_view(), name='currency-news-list'),
     path('v1/currency/rates/<str:base>/<str:target>/', CurrencyRateView.as_view(), name='currency-rate'),
-    path('v1/alerts/register/', RegisterAlertView.as_view(), name='register-alert'),
+    path('v2/alerts/register/', RegisterAlertView.as_view(), name='register-alert'),
     path(
         'v1/currency/rates/<str:from_currency>/<str:to_currency>/historical',
         FetchHistoricalCurrencyExchangeRates.as_view(),
@@ -30,17 +30,29 @@ urlpatterns = [
         VolatilityAnalysisView.as_view(),
         name='volatility_analysis',
     ),
+    path(
+        'v2/analytics/correlation/<str:base>/<str:target>/',
+        CorrelationAnalysisView.as_view(),
+        name='correlation_analysis',
+    ),
+    path(
+        'v2/analytics/prediction/<str:base>/<str:target>/',
+        CurrencyPredictionView.as_view(),
+        name='currency_prediction',
+    ),
     path('v1/economic/indicators/annual/', StoreAnnualIndicatorsView.as_view(), name='store-annual-economic-indicators'),
     path('v1/economic/indicators/monthly/', StoreMonthlyIndicatorsView.as_view(), name='store-monthly-economic-indicators'),
-    path('graph/<str:from_currency>/<str:to_currency>/last-week', GraphView_lastweek.as_view(), name='last-week-graph_view'),
-    path('graph/<str:from_currency>/<str:to_currency>/last-month', GraphView_lastmonth.as_view(), name='last-month-graph_view'),
-    path('graph/<str:from_currency>/<str:to_currency>/last-6-months',
+    path('v1/graph/<str:from_currency>/<str:to_currency>/last-week', GraphView_lastweek.as_view(), name='last-week-graph_view'),
+    path('v1/graph/<str:from_currency>/<str:to_currency>/last-month', GraphView_lastmonth.as_view(),
+         name='last-month-graph_view'),
+    path('v1/graph/<str:from_currency>/<str:to_currency>/last-6-months',
          GraphView_last6months.as_view(),
          name='last-6-months-graph_view'),
-    path('graph/<str:from_currency>/<str:to_currency>/last-year',
+    path('v1/graph/<str:from_currency>/<str:to_currency>/last-year',
          GraphView_lastyear.as_view(),
          name='last-year-graph_view'),
-    path('graph/<str:from_currency>/<str:to_currency>/last-5-years',
+    path('v1/graph/<str:from_currency>/<str:to_currency>/last-5-years',
          GraphView_last5years.as_view(),
          name='last-5-years-graph_view'),
+    path('v2/analytics/anomaly-detection/', anomaly_detection, name='anomaly-detection'),
 ]

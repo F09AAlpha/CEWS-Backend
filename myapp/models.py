@@ -4,3 +4,5 @@ from .Models.economicIndicatorsModel import AnnualEconomicIndicator, MonthlyEcon
 from .Models.currencyNewsModel import CurrencyNewsAlphaV
 from .Models.financialNewsModel import FinancialNewsAlphaV
 from .Models.exchangeRateAlertModel import ExchangeRateAlert
+from .Models.anomalyDetectionModel import AnomalyDetectionResult, AnomalyPoint
+from .Models.correlationModel import CorrelationResult

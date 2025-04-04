@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 ALPHA_VANTAGE_API_KEY = os.environ.get('ALPHA_VANTAGE_API_KEY')
 ALPHA_VANTAGE_BASE_URL = "https://www.alphavantage.co/query"
 EMAIL_HOST_USER = "cewsalerts@gmail.com"
-EMAIL_HOST_PASSWORD = "cewsalerts123"
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 
 
 def is_valid_email(email):
@@ -64,8 +64,8 @@ def send_alert_email(to_email, base, target, rate, alert_type, threshold):
     logger.debug(f"Email Host: {EMAIL_HOST_USER} (credentials used, but not displayed for security reasons)")
 
     subject = f"Exchange Rate Alert: {base}/{target}"
-    body = f"The exchange rate for {base}/{target} has {'risen above' if alert_type == 'above'
-                                                        else 'fallen below'} {threshold}. Current rate: {rate}"
+    body = (f"The exchange rate for {base}/{target} has"
+            f"{'risen above' if alert_type == 'above' else 'fallen below'} {threshold}. Current rate: {rate}")
 
     msg = MIMEMultipart()
     msg["From"] = EMAIL_HOST_USER
