@@ -62,12 +62,140 @@ jobs:
           name: ubl-despatch-image
           path: /tmp/ubl-despatch-image.tar
           retention-days: 1
+
+  # Unit tests
+  unit-tests:
+    runs-on: ubuntu-latest
+    needs: build
           
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install docker-compose
+        run: sudo apt-get update && sudo apt-get install -y docker-compose
+
+      # Create test environment file with secrets
+      - name: Create .env file for testing
+        run: |
+          cat > .env << EOF
+          DB_NAME=${{ secrets.TEST_DB_NAME }}
+          DB_USER=${{ secrets.TEST_DB_USER }}
+          DB_PASSWORD=${{ secrets.TEST_DB_PASSWORD }}
+          DB_HOST=${{ secrets.TEST_DB_HOST }}
+          DB_PORT=${{ secrets.TEST_DB_PORT }}
+          ALPHA_VANTAGE_API_KEY=${{ secrets.ALPHA_VANTAGE_API_KEY }}
+          EOF
+
+      - name: Delete test database if exists
+        run: |
+          PGPASSWORD=${{ secrets.TEST_DB_PASSWORD }} psql -h ${{ secrets.TEST_DB_HOST }} -U ${{ secrets.TEST_DB_USER }} -d postgres -c "
+          SELECT pg_terminate_backend(pg_stat_activity.pid)
+          FROM pg_stat_activity
+          WHERE pg_stat_activity.datname = 'test_${{ secrets.TEST_DB_NAME }}' AND pid <> pg_backend_pid();
+          "
+          
+          PGPASSWORD=${{ secrets.TEST_DB_PASSWORD }} psql -h ${{ secrets.TEST_DB_HOST }} -U ${{ secrets.TEST_DB_USER }} -d postgres -c "
+          DROP DATABASE IF EXISTS test_${{ secrets.TEST_DB_NAME }};
+          "
+
+      # Run with existing docker-compose file, but override the image
+      - name: Run unit tests inside container
+        run: |
+          docker-compose up -d
+          docker-compose exec -T web python manage.py test myapp/tests/unit --keepdb
+          docker-compose down
+
+  # Integration Tests
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+          
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install docker-compose
+        run: sudo apt-get update && sudo apt-get install -y docker-compose
+
+      # Create test environment file with secrets
+      - name: Create .env file for testing
+        run: |
+          cat > .env << EOF
+          DB_NAME=${{ secrets.TEST_DB_NAME }}
+          DB_USER=${{ secrets.TEST_DB_USER }}
+          DB_PASSWORD=${{ secrets.TEST_DB_PASSWORD }}
+          DB_HOST=${{ secrets.TEST_DB_HOST }}
+          DB_PORT=${{ secrets.TEST_DB_PORT }}
+          ALPHA_VANTAGE_API_KEY=${{ secrets.ALPHA_VANTAGE_API_KEY }}
+          EOF
+
+      - name: Delete test database if exists
+        run: |
+          PGPASSWORD=${{ secrets.TEST_DB_PASSWORD }} psql -h ${{ secrets.TEST_DB_HOST }} -U ${{ secrets.TEST_DB_USER }} -d postgres -c "
+          SELECT pg_terminate_backend(pg_stat_activity.pid)
+          FROM pg_stat_activity
+          WHERE pg_stat_activity.datname = 'test_${{ secrets.TEST_DB_NAME }}' AND pid <> pg_backend_pid();
+          "
+          
+          PGPASSWORD=${{ secrets.TEST_DB_PASSWORD }} psql -h ${{ secrets.TEST_DB_HOST }} -U ${{ secrets.TEST_DB_USER }} -d postgres -c "
+          DROP DATABASE IF EXISTS test_${{ secrets.TEST_DB_NAME }};
+          "
+      
+      # Run with existing docker-compose file, but override the image
+      - name: Run integreation tests inside container
+        run: |
+          docker-compose up -d
+          docker-compose exec -T web python manage.py test myapp/tests/integration --keepdb
+          docker-compose down
+
+    # End-to-End tests
+  e2e-tests:
+    runs-on: ubuntu-latest
+    needs: integration-tests
+          
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install docker-compose
+        run: sudo apt-get update && sudo apt-get install -y docker-compose
+
+      # Create test environment file with secrets
+      - name: Create .env file for testing
+        run: |
+          cat > .env << EOF
+          DB_NAME=${{ secrets.TEST_DB_NAME }}
+          DB_USER=${{ secrets.TEST_DB_USER }}
+          DB_PASSWORD=${{ secrets.TEST_DB_PASSWORD }}
+          DB_HOST=${{ secrets.TEST_DB_HOST }}
+          DB_PORT=${{ secrets.TEST_DB_PORT }}
+          ALPHA_VANTAGE_API_KEY=${{ secrets.ALPHA_VANTAGE_API_KEY }}
+          EOF
+
+      - name: Delete test database if exists
+        run: |
+          PGPASSWORD=${{ secrets.TEST_DB_PASSWORD }} psql -h ${{ secrets.TEST_DB_HOST }} -U ${{ secrets.TEST_DB_USER }} -d postgres -c "
+          SELECT pg_terminate_backend(pg_stat_activity.pid)
+          FROM pg_stat_activity
+          WHERE pg_stat_activity.datname = 'test_${{ secrets.TEST_DB_NAME }}' AND pid <> pg_backend_pid();
+          "
+          
+          PGPASSWORD=${{ secrets.TEST_DB_PASSWORD }} psql -h ${{ secrets.TEST_DB_HOST }} -U ${{ secrets.TEST_DB_USER }} -d postgres -c "
+          DROP DATABASE IF EXISTS test_${{ secrets.TEST_DB_NAME }};
+          "
+
+      # Run with existing docker-compose file, but override the image
+      - name: Run e2e tests inside container
+        run: |
+          docker-compose up -d
+          docker-compose exec -T web python manage.py test myapp/tests/e2e --keepdb
+          docker-compose down
 
   # Generate a test coverage pdf document
   test-coverage-report:
     runs-on: ubuntu-latest
-    needs: build
+    needs: e2e-tests
 
     steps:
       - name: Checkout code
@@ -93,7 +221,7 @@ jobs:
           docker-compose up -d
           docker-compose run --rm web coverage run manage.py test myapp.tests --keepdb
           docker-compose run --rm web coverage html
-          docker-compose run --rm web wkhtmltopdf coverage_html/index.html coverage_report.pdf
+          docker-compose run --rm web wkhtmltopdf file:///app/coverage_html/index.html coverage_report.pdf
 
       - name: Upload test coverage reports
         uses: actions/upload-artifact@v4.6.2
