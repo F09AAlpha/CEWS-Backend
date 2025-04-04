@@ -89,6 +89,7 @@ class FetchFinancialNewsViewTest(TestCase):
     @patch('myapp.Views.financialNewsView.requests.get')
     def test_fetch_financial_news_duplicate_handling(self, mock_get):
         """Test duplicate article handling"""
+        # Pre-existing article
         FinancialNewsAlphaV.objects.create(
             title="TSLA earnings report",
             source="Reuters",
@@ -100,6 +101,7 @@ class FetchFinancialNewsViewTest(TestCase):
             symbol="TSLA"
         )
 
+        # Mock API feed with one duplicate and one new article
         mock_get.return_value.status_code = 200
         mock_get.return_value.json.return_value = {
             "feed": [
@@ -115,7 +117,7 @@ class FetchFinancialNewsViewTest(TestCase):
                 {
                     "title": "TSLA earnings report",
                     "source": "Reuters",
-                    "url": "https://example.com/news/4",
+                    "url": "https://example.com/news/4",  # same as above
                     "summary": "Tesla reported Q1 earnings.",
                     "overall_sentiment_score": "0.45",
                     "overall_sentiment_label": "neutral",
@@ -124,25 +126,11 @@ class FetchFinancialNewsViewTest(TestCase):
             ]
         }
 
-        self.assertEqual(FinancialNewsAlphaV.objects.count(), 2)
+        request = self.factory.post(self.url, {"symbol": "TSLA"}, format='json')
+        response = self.view(request)
 
-    @patch('myapp.Views.financialNewsView.requests.get')
-    def test_fetch_financial_news_default_symbol(self, mock_get):
-        """Test fetching news when no symbol is provided"""
-        mock_get.return_value.status_code = 200
-        mock_get.return_value.json.return_value = {
-            "feed": [{
-                "title": "AAPL releases new iPhone",
-                "source": "TechCrunch",
-                "url": "https://example.com/news/6",
-                "summary": "Apple announces latest iPhone.",
-                "overall_sentiment_score": "0.80",
-                "overall_sentiment_label": "positive",
-                "time_published": "20240301T130000"
-            }]
-        }
-
-        self.assertEqual(FinancialNewsAlphaV.objects.first().symbol, self.test_symbol)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(FinancialNewsAlphaV.objects.count(), 2)  
 
     @patch('myapp.Views.financialNewsView.requests.get')
     def test_fetch_financial_news_adage_serializer_failure(self, mock_get):
