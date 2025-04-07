@@ -1,4 +1,4 @@
-# Alpha-Backend
+# Foresight-Backend
 
 ## Prerequisites
 - Ensure you have **Python 3.12.6** installed. You can check your Python version by running:
