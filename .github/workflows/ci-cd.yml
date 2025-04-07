@@ -235,11 +235,22 @@ jobs:
           docker-compose run --rm web coverage run manage.py test myapp.tests --keepdb
           docker-compose run --rm web coverage html
 
-      - name: Archive coverage report as artifact
+      - name: Install wkhtmltopdf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wkhtmltopdf
+          
+      - name: Convert HTML coverage report to PDF
+        run: |
+          wkhtmltopdf htmlcov/index.html test_coverage_report.pdf
+
+      - name: Archive coverage reports as artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: test-coverage-html
-          path: htmlcov/
+          name: test-coverage-reports
+          path: |
+            htmlcov/
+            test_coverage_report.pdf
           retention-days: 7
 
       - name: Stop Docker Containers
