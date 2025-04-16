@@ -23,7 +23,7 @@ class RunDailyAlertChecks(APIView):
                 "alert_id": alert.alert_id,
                 "base": base,
                 "target": target,
-                # "rate_status": rate_response.status_code,
+                "rate_status": rate_response.status_code,
                 "prediction_status": prediction_response.status_code
             })
 

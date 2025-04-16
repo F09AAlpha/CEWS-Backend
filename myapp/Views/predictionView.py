@@ -58,7 +58,7 @@ def send_alert_email(to_email, base, target, rate, alert_type, threshold, predic
 
     subject = f"Exchange Rate Prediction Alert: {base}/{target} on {prediction_day}"
     body = (f"The exchange rate for {base}/{target} is predicted to "
-            f"{'rise above' if alert_type == 'above' else 'fall below'} {threshold}. Current rate: {rate} on {prediction_day}")
+            f"{'rise above' if alert_type == 'above' else 'fall below'} {threshold}. Predicted rate: {rate} on {prediction_day}")
 
     msg = MIMEMultipart()
     msg["From"] = EMAIL_HOST_USER
