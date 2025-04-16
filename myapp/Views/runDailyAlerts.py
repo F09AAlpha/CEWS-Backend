@@ -14,7 +14,7 @@ class RunDailyAlertChecks(APIView):
             target = alert.target
 
             # Call the currency rate API
-            # rate_response = requests.get(f"http://127.0.0.1:8000/api/v1/currency/rates/{base}/{target}/")
+            rate_response = requests.get(f"http://127.0.0.1:8000/api/v1/currency/rates/{base}/{target}/")
             
             # Call the prediction API
             prediction_response = requests.get(f"http://127.0.0.1:8000/api/v2/analytics/prediction/{base}/{target}/")
