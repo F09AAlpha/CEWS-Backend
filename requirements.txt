@@ -74,7 +74,7 @@ sympy==1.13.1
 threadpoolctl==3.6.0
 tokenizers==0.15.2
 tomli==2.2.1
-torch==2.2.0
+torch==2.6.0
 tqdm==4.67.1
 transformers==4.38.2
 typing_extensions==4.12.2

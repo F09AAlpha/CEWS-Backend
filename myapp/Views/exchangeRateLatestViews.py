@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 ALPHA_VANTAGE_API_KEY = os.environ.get('ALPHA_VANTAGE_API_KEY')
 ALPHA_VANTAGE_BASE_URL = "https://www.alphavantage.co/query"
-EMAIL_HOST_USER = "cewsalerts@gmail.com"
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 
 
@@ -64,7 +64,7 @@ def send_alert_email(to_email, base, target, rate, alert_type, threshold):
     logger.debug(f"Email Host: {EMAIL_HOST_USER} (credentials used, but not displayed for security reasons)")
 
     subject = f"Exchange Rate Alert: {base}/{target}"
-    body = (f"The exchange rate for {base}/{target} has"
+    body = (f"The exchange rate for {base}/{target} has "
             f"{'risen above' if alert_type == 'above' else 'fallen below'} {threshold}. Current rate: {rate}")
 
     msg = MIMEMultipart()
@@ -231,7 +231,7 @@ class CurrencyRateView(APIView):
             )
 
             for alert in alerts:
-                send_alert_email(alert.email, base, target, rate, alert.alert_type, alert.threshold)
+                send_alert_email(alert.email, base, target, round(rate, 2), alert.alert_type, round(alert.threshold, 2))
                 logger.info(f"Alert triggered for {base}/{target} at {rate}, threshold {alert.threshold}")
                 alert.delete()  # Delete the alert after sending the email
 
