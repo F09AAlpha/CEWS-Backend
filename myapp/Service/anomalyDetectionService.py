@@ -113,9 +113,15 @@ class AnomalyDetectionService:
 
             return result
 
-        except (InsufficientDataError, AlphaVantageError):
-            # Re-raise these specific exceptions
+        except InsufficientDataError as e:
+            # For insufficient data, raise the exception
+            logger.warning(f"Insufficient data for anomaly detection: {str(e)}")
             raise
+
+        except AlphaVantageError as e:
+            # For API errors, raise as a ProcessingError
+            logger.error(f"Alpha Vantage API error during anomaly detection: {str(e)}")
+            raise ProcessingError(f"Error fetching exchange rate data: {str(e)}")
 
         except Exception as e:
             logger.error(f"Error processing data for anomaly detection: {str(e)}")

@@ -7,24 +7,22 @@ import uuid
 
 class RegisterAlertView(APIView):
     def post(self, request):
-        # Debugging: Print the incoming data
-        print("Received data:", request.data)
+        print("Received data:", request.data)  # Debugging
 
         data = request.data.copy()  # Make a mutable copy of request data
 
-        # Generate a unique alert ID and add it to the request data
-        alert_id = f"ALERT-{uuid.uuid4().hex[:8]}"
-        data["alert_id"] = alert_id
+        # Generate a unique alert ID if not provided
+        if not data.get("alert_id"):
+            data["alert_id"] = f"ALERT-{uuid.uuid4().hex[:8]}"
 
         serializer = ExchangeRateAlertSerializer(data=data)
         if serializer.is_valid():
-            serializer.save()  # Save the validated alert data to the database
+            serializer.save()  # Save the validated data
             return Response({
-                "alert_id": alert_id,
+                "alert_id": serializer.data["alert_id"],
                 "status": "registered",
                 "message": "Alert successfully registered"
-            }, status=status.HTTP_201_CREATED)  # Use 201 for resource creation
+            }, status=status.HTTP_201_CREATED)
 
-        # Debugging: Print validation errors if the data is not valid
-        print("Validation errors:", serializer.errors)
+        print("Validation errors:", serializer.errors)  # Debugging
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
