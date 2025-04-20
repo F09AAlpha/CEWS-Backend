@@ -14,7 +14,6 @@ from scipy import stats
 from myapp.Models.predictionModel import CurrencyPrediction
 from myapp.Service.alpha_vantage import AlphaVantageService
 from myapp.Service.correlationService import CorrelationService
-from myapp.Service.anomalyDetectionService import AnomalyDetectionService
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -345,68 +344,63 @@ class PredictionService:
             predictions_upper = [pred * (1 + bound) for pred, bound in zip(predictions_mean, forecast_bounds)]
 
             # Apply anomaly detection to improve prediction quality
-            try:
-                # Initialize anomaly detection service
-                anomaly_detector = AnomalyDetectionService(
-                    base_currency=exchange_df.attrs.get('base_currency', 'Unknown'),
-                    target_currency=exchange_df.attrs.get('target_currency', 'Unknown'),
-                    analysis_period_days=min(90, len(exchange_df)),  # Use available data up to 90 days
-                    z_score_threshold=2.0
+            used_anomaly_detection = False
+            if len(exchange_df) > 30:  # Only detect anomalies with enough data
+                try:
+                    # Use Z-score method for anomaly detection
+                    z_scores = np.abs(stats.zscore(exchange_df['close']))
+                    anomalies = (z_scores > 3.5)  # Points beyond 3.5 standard deviations
+
+                    if anomalies.any():
+                        used_anomaly_detection = True
+                        anomaly_count = anomalies.sum()
+                        logger.info(f"Detected {anomaly_count} anomalies in exchange rate data")
+
+                        # Replace anomalies with interpolated values
+                        clean_df = exchange_df.copy()
+                        clean_df.loc[anomalies, 'close'] = np.nan
+                        clean_df['close'] = clean_df['close'].interpolate(method='linear')
+                        exchange_df = clean_df
+                except Exception as e:
+                    logger.warning(f"Error during anomaly detection: {str(e)}")
+
+            # Adjust the data to reduce the impact of anomalies on prediction
+            if used_anomaly_detection:
+                # Convert dates to string format for comparison
+                exchange_df['date_str'] = exchange_df['date'].dt.strftime('%Y-%m-%d')
+
+                # Identify anomalous data points
+                exchange_df['is_anomaly'] = exchange_df['date_str'].apply(
+                    lambda date: anomalies[date] if date in anomalies.index else False
                 )
 
-                # Detect anomalies
-                anomaly_result = anomaly_detector.detect_anomalies()
-                anomaly_count = anomaly_result['anomaly_count']
+                # Use non-anomalous data for drift calculation if we have sufficient data
+                normal_data = exchange_df[~exchange_df['is_anomaly']]
+                if len(normal_data) >= 15:  # Ensure we have enough normal data points
+                    # Recalculate drift using only normal data
+                    normal_close = normal_data['close'].values
+                    mean_drift = np.mean(np.diff(normal_close[-30:] if len(normal_close) > 30 else normal_close))
+                    logger.info(f"Adjusted drift calculation using filtered data: {mean_drift}")
 
-                # Create a dictionary of anomaly points for easy lookup
-                anomaly_points = {}
-                for point in anomaly_result['anomaly_points']:
-                    date_str = point['timestamp'].split('T')[0]  # Extract date part
-                    anomaly_points[date_str] = point
+                    # Calculate volatility using normal data
+                    normal_pct_changes = np.diff(normal_close) / normal_close[:-1]
+                    daily_volatility = np.std(normal_pct_changes)
+                    logger.info(f"Adjusted volatility calculation: {daily_volatility}")
 
-                # Log using the currencies from the anomaly result
-                base = anomaly_result['base']
-                target = anomaly_result['target']
-                logger.info(f"Found {anomaly_count} anomalies in historical data for {base}/{target}")
+                    # Update predictions with adjusted parameters
+                    predictions_mean = [last_value + mean_drift * (i+1) for i in range(horizon_days)]
 
-                # Adjust the data to reduce the impact of anomalies on prediction
-                if anomaly_count > 0:
-                    # Convert dates to string format for comparison
-                    exchange_df['date_str'] = exchange_df['date'].dt.strftime('%Y-%m-%d')
+                    # Recalculate bounds with new volatility
+                    forecast_bounds = []
+                    for i in range(horizon_days):
+                        time_factor = np.sqrt(i + 1)
+                        pct_bound = daily_volatility * z_score * time_factor
+                        pct_bound = min(pct_bound, 0.08)  # Cap at 8%
+                        forecast_bounds.append(pct_bound)
 
-                    # Identify anomalous data points
-                    exchange_df['is_anomaly'] = exchange_df['date_str'].apply(
-                        lambda date: date in anomaly_points
-                    )
-
-                    # Use non-anomalous data for drift calculation if we have sufficient data
-                    normal_data = exchange_df[~exchange_df['is_anomaly']]
-                    if len(normal_data) >= 15:  # Ensure we have enough normal data points
-                        # Recalculate drift using only normal data
-                        normal_close = normal_data['close'].values
-                        mean_drift = np.mean(np.diff(normal_close[-30:] if len(normal_close) > 30 else normal_close))
-                        logger.info(f"Adjusted drift calculation using filtered data: {mean_drift}")
-
-                        # Calculate volatility using normal data
-                        normal_pct_changes = np.diff(normal_close) / normal_close[:-1]
-                        daily_volatility = np.std(normal_pct_changes)
-                        logger.info(f"Adjusted volatility calculation: {daily_volatility}")
-
-                        # Update predictions with adjusted parameters
-                        predictions_mean = [last_value + mean_drift * (i+1) for i in range(horizon_days)]
-
-                        # Recalculate bounds with new volatility
-                        forecast_bounds = []
-                        for i in range(horizon_days):
-                            time_factor = np.sqrt(i + 1)
-                            pct_bound = daily_volatility * z_score * time_factor
-                            pct_bound = min(pct_bound, 0.08)  # Cap at 8%
-                            forecast_bounds.append(pct_bound)
-
-                        predictions_lower = [pred * (1 - bound) for pred, bound in zip(predictions_mean, forecast_bounds)]
-                        predictions_upper = [pred * (1 + bound) for pred, bound in zip(predictions_mean, forecast_bounds)]
-            except Exception as e:
-                logger.warning(f"Error applying anomaly detection: {str(e)}. Using original prediction model.")
+                    predictions_lower = [pred * (1 - bound) for pred, bound in zip(predictions_mean, forecast_bounds)]
+                    predictions_upper = [pred * (1 + bound) for pred, bound in zip(predictions_mean, forecast_bounds)]
+            else:
                 # If anomaly detection fails, we'll use the original prediction values
                 # Calculate prediction intervals based on original forecast_bounds
                 predictions_lower = [pred * (1 - bound) for pred, bound in zip(predictions_mean, forecast_bounds)]
@@ -831,7 +825,7 @@ class PredictionService:
                                 best_aic = current_aic
                                 best_params = (p, d, q)
                                 best_model = model_fit
-                                logger.debug(f"New best ARIMA model: {best_params} with AIC: {current_aic:.2f}")
+                            logger.debug(f"New best ARIMA model: {best_params} with AIC: {current_aic:.2f}")
 
                         except Exception as e:
                             max_failures += 1
