@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 from rest_framework.exceptions import NotFound
 import logging
 import os
-import numpy as np
 
 
 # Custom exception classes
@@ -62,7 +61,7 @@ class AlphaVantageService:
     def get_exchange_rates(self, from_currency, to_currency, days=30):
         """
         Get exchange rates for the specified number of days.
-        This is a wrapper around get_forex_daily to match the interface expected by AnomalyDetectionService.
+        This uses the Time Series FX (Daily) endpoint to get real historical data.
 
         Args:
             from_currency: Base currency code
@@ -73,56 +72,167 @@ class AlphaVantageService:
             DataFrame with exchange rate data
         """
         try:
-            # Get the full dataset
-            df, _ = self.get_forex_daily(from_currency, to_currency)
+            # Call the Time Series FX (Daily) endpoint for real historical data
+            params = {
+                'function': 'FX_DAILY',
+                'from_symbol': from_currency,
+                'to_symbol': to_currency,
+                'outputsize': 'full',  # Get full data set (up to 20 years)
+                'apikey': self.api_key
+            }
+
+            self.logger.info(f"Fetching historical exchange rate data for {from_currency}/{to_currency}")
+            response = requests.get(self.BASE_URL, params=params)
+
+            # Handle HTTP errors
+            if response.status_code == 429:
+                raise RateLimitError("Alpha Vantage API rate limit exceeded")
+            elif response.status_code >= 500:
+                raise TemporaryAPIError(f"Alpha Vantage server error: {response.status_code}")
+            elif response.status_code != 200:
+                raise AlphaVantageError(f"Alpha Vantage API error: {response.status_code} - {response.text}")
+
+            data = response.json()
+
+            # Check for API error messages
+            if 'Error Message' in data:
+                raise InvalidRequestError(f"Invalid API request: {data['Error Message']}")
+
+            if 'Note' in data and 'API call frequency' in data['Note']:
+                raise RateLimitError(f"Alpha Vantage API rate limit: {data['Note']}")
+
+            if 'Time Series FX (Daily)' not in data:
+                raise NotFound(f"No historical data found for {from_currency}/{to_currency}")
+
+            # Parse the time series data
+            time_series = data['Time Series FX (Daily)']
+
+            # Create DataFrame from the time series data
+            df = pd.DataFrame.from_dict(time_series, orient='index')
+
+            # Convert column names from API format to our standard format
+            df.rename(columns={
+                '1. open': 'open',
+                '2. high': 'high',
+                '3. low': 'low',
+                '4. close': 'close'
+            }, inplace=True)
+
+            # Convert values to float
+            for col in ['open', 'high', 'low', 'close']:
+                df[col] = df[col].astype(float)
+
+            # Convert index to datetime and sort
+            df.index = pd.to_datetime(df.index)
+            df.sort_index(inplace=True)
 
             # Filter to requested time period
             start_date = datetime.now().date() - timedelta(days=days)
             filtered_df = df[df.index.date >= start_date].copy()
 
+            # Add metadata as attributes
+            filtered_df.attrs['base_currency'] = from_currency
+            filtered_df.attrs['target_currency'] = to_currency
+
             # Reset index to make date a column
             filtered_df.reset_index(inplace=True)
-            filtered_df.rename(columns={'index': 'date', 'close': 'close'}, inplace=True)
+            filtered_df.rename(columns={'index': 'date'}, inplace=True)
 
+            self.logger.info(f"Retrieved {len(filtered_df)} days of historical data for {from_currency}/{to_currency}")
             return filtered_df
+
         except (AlphaVantageError, Exception) as e:
-            self.logger.error(f"Alpha Vantage API error: {str(e)}")
-            # Generate mock data as fallback
-            return self._generate_mock_exchange_rates(from_currency, to_currency, days)
+            self.logger.error(f"Error retrieving historical exchange rate data: {str(e)}")
+            raise
 
     def get_forex_daily(self, from_currency, to_currency, outputsize='full'):
         """
-        Fetch daily forex rates for a currency pair.
+        Fetch daily forex rates for a currency pair using the FX_DAILY endpoint.
 
-        This method now uses CURRENCY_EXCHANGE_RATE endpoint with historical data generation
-        to provide compatibility with the FX_DAILY endpoint format.
+        Args:
+            from_currency: Base currency code
+            to_currency: Target currency code
+            outputsize: 'full' or 'compact' data set
+
+        Returns:
+            tuple: (DataFrame with forex data, metadata dict)
         """
         try:
-            self.logger.info(f"Fetching exchange rate data for {from_currency}/{to_currency}")
+            # Call the Time Series FX (Daily) endpoint for real historical data
+            params = {
+                'function': 'FX_DAILY',
+                'from_symbol': from_currency,
+                'to_symbol': to_currency,
+                'outputsize': outputsize,
+                'apikey': self.api_key
+            }
 
-            # Use real-time exchange rate as current value
-            current_rate, current_metadata = self._get_realtime_exchange_rate(from_currency, to_currency)
+            self.logger.info(f"Fetching forex daily data for {from_currency}/{to_currency}")
+            response = requests.get(self.BASE_URL, params=params)
 
-            if current_rate is None:
-                raise AlphaVantageError(f"Unable to retrieve exchange rate for {from_currency}/{to_currency}")
+            # Handle HTTP errors
+            if response.status_code == 429:
+                raise RateLimitError("Alpha Vantage API rate limit exceeded")
+            elif response.status_code >= 500:
+                raise TemporaryAPIError(f"Alpha Vantage server error: {response.status_code}")
+            elif response.status_code != 200:
+                raise AlphaVantageError(f"Alpha Vantage API error: {response.status_code} - {response.text}")
 
-            # For historical data, generate a consistent series based on the current rate
-            # This is better than completely mock data, as it uses real current exchange rates
-            days_to_generate = 90 if outputsize == 'full' else 30
-            df, metadata = self._generate_historical_data(
-                from_currency, to_currency, current_rate, days_to_generate
-            )
+            data = response.json()
 
-            # Combine the metadata but preserve original keys expected by consuming services
-            metadata['data_source'] = current_metadata.get('data_source', 'Alpha Vantage')
+            # Check for API error messages
+            if 'Error Message' in data:
+                raise InvalidRequestError(f"Invalid API request: {data['Error Message']}")
 
+            if 'Note' in data and 'API call frequency' in data['Note']:
+                raise RateLimitError(f"Alpha Vantage API rate limit: {data['Note']}")
+
+            if 'Time Series FX (Daily)' not in data:
+                raise NotFound(f"No forex daily data found for {from_currency}/{to_currency}")
+
+            # Extract metadata
+            metadata = {
+                'data_source': 'Alpha Vantage (FX_DAILY)',
+                'last_refreshed': data['Meta Data'].get('5. Last Refreshed', 'Unknown'),
+                'time_zone': data['Meta Data'].get('6. Time Zone', 'GMT'),
+                'information': data['Meta Data'].get('1. Information', 'FX Daily'),
+                'from_symbol': data['Meta Data'].get('2. From Symbol', from_currency),
+                'to_symbol': data['Meta Data'].get('3. To Symbol', to_currency)
+            }
+
+            # Parse the time series data
+            time_series = data['Time Series FX (Daily)']
+
+            # Create DataFrame from the time series data
+            df = pd.DataFrame.from_dict(time_series, orient='index')
+
+            # Convert column names from API format to our standard format
+            df.rename(columns={
+                '1. open': 'open',
+                '2. high': 'high',
+                '3. low': 'low',
+                '4. close': 'close'
+            }, inplace=True)
+
+            # Convert values to float
+            for col in ['open', 'high', 'low', 'close']:
+                df[col] = df[col].astype(float)
+
+            # Convert index to datetime and sort
+            df.index = pd.to_datetime(df.index)
+            df.sort_index(inplace=True)
+
+            # Add attributes for currency info
+            df.attrs['base_currency'] = from_currency
+            df.attrs['target_currency'] = to_currency
+
+            self.logger.info(f"Retrieved {len(df)} days of forex data for {from_currency}/{to_currency}")
             return df, metadata
 
-        except (requests.exceptions.RequestException, AlphaVantageError) as e:
-            self.logger.error(f"Error retrieving FX_DAILY data: {str(e)}")
-            # Create fallback data to maintain backward compatibility
-            self.logger.warning(f"Using mock data for {from_currency}/{to_currency}")
-            return self._generate_mock_forex_daily(from_currency, to_currency)
+        except (AlphaVantageError, Exception) as e:
+            self.logger.error(f"Error retrieving forex daily data: {str(e)}")
+            # We don't generate mock data anymore - pass the error up the stack
+            raise
 
     def _get_realtime_exchange_rate(self, from_currency, to_currency):
         """
@@ -178,202 +288,7 @@ class AlphaVantageService:
 
         except Exception as e:
             self.logger.error(f"Error retrieving real-time exchange rate: {str(e)}")
-            return None, {}
-
-    def _generate_historical_data(self, from_currency, to_currency, current_rate, days=90):
-        """
-        Generate historical data based on the current exchange rate and
-        realistic market volatility patterns.
-
-        This uses the current real exchange rate as a base and applies
-        historical patterns to generate plausible past data.
-
-        Args:
-            from_currency: Base currency
-            to_currency: Quote currency
-            current_rate: Current exchange rate (real from API)
-            days: Number of days to generate
-
-        Returns:
-            tuple: (DataFrame with historical data, metadata)
-        """
-        self.logger.info(f"Generating historical data based on current rate for {from_currency}/{to_currency}")
-
-        # Set a seed based on currency pair for consistent results
-        np.random.seed(hash(f"{from_currency}{to_currency}") % 2**32)
-
-        # Generate dates for the past N days
-        end_date = datetime.now().date()
-        start_date = end_date - timedelta(days=days)
-        date_range = pd.date_range(start=start_date, end=end_date)
-
-        # Use realistic volatility based on currency pair
-        # Common currency pairs have lower volatility
-        common_pairs = [
-            'USDEUR', 'EURUSD', 'USDJPY', 'JPYUSD', 'USDGBP', 'GBPUSD',
-            'USDCAD', 'CADUSD', 'USDCHF', 'CHFUSD', 'AUDUSD', 'USDAUD'
-        ]
-
-        pair_key = f"{from_currency}{to_currency}"
-        daily_volatility = 0.003 if pair_key in common_pairs else 0.006
-
-        # Generate a realistic random walk backward from current rate
-        # More recent days should be closer to current rate
-        days_array = np.arange(len(date_range))
-        days_from_now = len(days_array) - days_array - 1
-
-        # Generate random changes with decreasing variance as we get closer to now
-        random_changes = np.random.normal(
-            0,
-            daily_volatility * np.sqrt(days_from_now + 1),
-            len(days_array)
-        )
-
-        # Add a slight trend component (50% chance of upward/downward trend)
-        trend = np.linspace(0, 0.04, len(days_array)) * np.random.choice([-1, 1])
-
-        # Calculate the cumulative effect backward from current
-        rate_changes = np.cumsum(random_changes[::-1] + trend[::-1])[::-1]
-
-        # Apply changes to current rate to get historical series
-        rates = current_rate / (1 + rate_changes)
-
-        # Create OHLC data with realistic intraday ranges
-        df = pd.DataFrame(index=date_range)
-        df['close'] = rates
-        df['open'] = rates * (1 + np.random.normal(0, daily_volatility/2, len(rates)))
-        df['high'] = np.maximum(df['open'], df['close']) * (1 + np.abs(np.random.normal(0, daily_volatility/1.5, len(rates))))
-        df['low'] = np.minimum(df['open'], df['close']) * (1 - np.abs(np.random.normal(0, daily_volatility/1.5, len(rates))))
-
-        # Make sure high is always highest and low is always lowest
-        df['high'] = np.maximum(np.maximum(df['high'], df['open']), df['close'])
-        df['low'] = np.minimum(np.minimum(df['low'], df['open']), df['close'])
-
-        # Ensure the last close is exactly the current rate
-        df.iloc[-1, df.columns.get_indexer(['close'])[0]] = current_rate
-
-        # Add attributes for currency info
-        df.attrs['base_currency'] = from_currency
-        df.attrs['target_currency'] = to_currency
-
-        # Create metadata
-        metadata = {
-            'data_source': 'Alpha Vantage with Historical Projection',
-            'dataset_type': 'Forex Daily',
-            'dataset_id': f"forex_daily_{from_currency}_{to_currency}_{datetime.now().strftime('%Y%m%d')}",
-            'time_object': {
-                'timestamp': datetime.now().isoformat(),
-                'timezone': 'GMT+0'
-            },
-            'generated_from_real_exchange_rate': True
-        }
-
-        return df, metadata
-
-    def _generate_mock_forex_daily(self, from_currency, to_currency):
-        """
-        Generate mock forex daily data when the API call fails.
-
-        Args:
-            from_currency (str): Base currency code
-            to_currency (str): Target currency code
-
-        Returns:
-            tuple: (DataFrame with mock data, metadata dict)
-        """
-        self.logger.warning(f"Using mock data for {from_currency}/{to_currency}")
-
-        # Set a seed based on currency pair for consistent results
-        np.random.seed(hash(f"{from_currency}{to_currency}") % 2**32)
-
-        # Generate dates for the past 90 days
-        end_date = datetime.now().date()
-        start_date = end_date - timedelta(days=90)
-        dates = pd.date_range(start=start_date, end=end_date)
-
-        # Use realistic exchange rate values for common currency pairs
-        base_rates = {
-            'USDEUR': 0.92, 'EURUSD': 1.09, 'USDJPY': 150.0, 'JPYUSD': 0.0067,
-            'USDGBP': 0.79, 'GBPUSD': 1.27, 'USDAUD': 1.52, 'AUDUSD': 0.66,
-            'USDCAD': 1.36, 'CADUSD': 0.74, 'USDCHF': 0.89, 'CHFUSD': 1.12
-        }
-
-        pair_key = f"{from_currency}{to_currency}"
-        base_rate = base_rates.get(pair_key, 1.0)
-        if pair_key not in base_rates:
-            # If pair not in our list, make a reasonable guess
-            if from_currency == to_currency:
-                base_rate = 1.0
-            else:
-                # Random rate between 0.5 and 2.0
-                base_rate = np.random.uniform(0.5, 2.0)
-
-        # Generate slightly noisy data with a small trend
-        n = len(dates)
-        trend = np.linspace(0, 0.05, n) * np.random.choice([-1, 1])  # Random up/down trend
-        noise = np.random.normal(0, 0.01, n)  # Daily volatility
-
-        # Create rates with random walk and trend components
-        rates = base_rate * (1 + np.cumsum(noise) + trend)
-
-        # Create DataFframe with OHLC data
-        df = pd.DataFrame({
-            'open': rates * (1 - np.random.uniform(0, 0.003, n)),
-            'high': rates * (1 + np.random.uniform(0.001, 0.005, n)),
-            'low': rates * (1 - np.random.uniform(0.001, 0.005, n)),
-            'close': rates
-        }, index=dates)
-
-        # Ensure high > open > close > low relationship isn't violated
-        for col in ['open', 'close']:
-            df['high'] = np.maximum(df['high'], df[col] * 1.001)
-            df['low'] = np.minimum(df['low'], df[col] * 0.999)
-
-        # Extract metadata for ADAGE 3.0 FORMAT
-        metadata = {
-            'data_source': 'Mock Data (Alpha Vantage Unavailable)',
-            'dataset_type': 'Forex Daily Mock',
-            'dataset_id': f"mock_forex_daily_{from_currency}_{to_currency}_{datetime.now().strftime('%Y%m%d')}",
-            'time_object': {
-                'timestamp': datetime.now().isoformat(),
-                'timezone': 'GMT+0'
-            }
-        }
-
-        # Add currency attributes
-        df.attrs['base_currency'] = from_currency
-        df.attrs['target_currency'] = to_currency
-
-        return df, metadata
-
-    def _generate_mock_exchange_rates(self, from_currency, to_currency, days=30):
-        """
-        Generate mock exchange rate data for the anomaly detection service.
-
-        Args:
-            from_currency (str): Base currency code
-            to_currency (str): Target currency code
-            days (int): Number of days of data to return
-
-        Returns:
-            DataFrame: Mock exchange rate data with date and close columns
-        """
-        # Use the mock forex daily method to get the base data
-        df, _ = self._generate_mock_forex_daily(from_currency, to_currency)
-
-        # Filter to requested time period
-        start_date = datetime.now().date() - timedelta(days=days)
-        filtered_df = df[df.index.date >= start_date].copy()
-
-        # Reset index to make date a column
-        filtered_df.reset_index(inplace=True)
-        filtered_df.rename(columns={'index': 'date'}, inplace=True)
-
-        # Add currency attributes
-        filtered_df.attrs['base_currency'] = from_currency
-        filtered_df.attrs['target_currency'] = to_currency
-
-        return filtered_df
+            raise
 
     def get_news_sentiment(self, currencies, from_date, limit=500):
         """
