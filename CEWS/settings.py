@@ -150,7 +150,7 @@ LOGGING = {
             'formatter': 'verbose',
         },
         'file': {
-            'level': 'ERROR',
+            'level': 'INFO',
             'class': 'logging.FileHandler',
             'filename': 'currency_collector.log',
             'formatter': 'verbose',
@@ -158,6 +158,11 @@ LOGGING = {
     },
     'loggers': {
         'currency_collector': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'myapp': {
             'handlers': ['console', 'file'],
             'level': 'INFO',
             'propagate': True,
