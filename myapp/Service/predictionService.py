@@ -1155,12 +1155,13 @@ class PredictionService:
                 'normalized_mae': None
             }
 
-    def format_adage_response(self, prediction):
+    def format_adage_response(self, prediction, include_backtest=False):
         """
         Format the prediction response according to ADAGE 3.0 standard.
 
         Args:
             prediction (CurrencyPrediction): The prediction to format
+            include_backtest (bool): Whether to include historical data for backtesting
 
         Returns:
             dict: ADAGE 3.0 formatted response
@@ -1209,6 +1210,49 @@ class PredictionService:
                     "used_in_prediction": True
                 })
 
+            # Get backtest data if requested
+            backtest_values = []
+            if include_backtest:
+                try:
+                    # Get the last 7 days of historical data
+                    historical_days = 7
+                    exchange_df = self.alpha_vantage_service.get_exchange_rates(
+                        prediction.base_currency, prediction.target_currency, days=historical_days + 1
+                    )
+                    
+                    # Sort by date and get the last 7 days (excluding today)
+                    exchange_df = exchange_df.sort_values('date')
+                    historical_data = exchange_df.iloc[-historical_days-1:-1]
+                    
+                    # Format dates and values
+                    for _, row in historical_data.iterrows():
+                        date_str = row['date'].strftime('%Y-%m-%d')
+                        mean_value = float(row['close'])
+                        
+                        # Calculate simple bounds for historical data
+                        avg_volatility = 0.01  # 1% default volatility
+                        if len(historical_data) > 3:
+                            # Calculate actual volatility if we have enough data
+                            pct_changes = historical_data['close'].pct_change().dropna()
+                            if not pct_changes.empty:
+                                avg_volatility = float(pct_changes.std())
+                        
+                        # Set bounds at +/- volatility
+                        lower_bound = mean_value * (1 - avg_volatility)
+                        upper_bound = mean_value * (1 + avg_volatility)
+                        
+                        backtest_values.append({
+                            "timestamp": date_str,
+                            "mean": mean_value,
+                            "lower_bound": lower_bound,
+                            "upper_bound": upper_bound
+                        })
+                    
+                    logger.info(f"Added {len(backtest_values)} historical data points for backtest")
+                    
+                except Exception as e:
+                    logger.warning(f"Could not retrieve historical data for backtest: {str(e)}")
+
             # Create attributes with model accuracy metrics
             attributes = {
                 "base_currency": prediction.base_currency,
@@ -1221,6 +1265,10 @@ class PredictionService:
                 "influencing_factors": influencing_factors,
                 "prediction_values": prediction_values
             }
+            
+            # Add backtest values if available
+            if include_backtest and backtest_values:
+                attributes["backtest_values"] = backtest_values
 
             # Add error metrics if available
             if hasattr(prediction, 'mean_square_error') and prediction.mean_square_error is not None:

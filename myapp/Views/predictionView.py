@@ -5,6 +5,7 @@ import logging
 import re
 import traceback
 from django.utils import timezone
+from datetime import datetime, timedelta
 
 from myapp.Service.predictionService import PredictionService
 from myapp.Serializers.predictionSerializer import CurrencyPredictionSerializer
@@ -36,6 +37,7 @@ class CurrencyPredictionView(APIView):
         - confidence: Confidence level for prediction intervals (50-99, default: 80)
           Lower values (e.g., 70-80) give tighter, more precise bounds
           Higher values (e.g., 90-95) give wider bounds with more certainty
+        - backtest: Whether to include historical data for the past 7 days (default: false)
 
         Returns:
         - ADAGE 3.0 compliant prediction response
@@ -47,6 +49,9 @@ class CurrencyPredictionView(APIView):
             # Check if we should use ARIMA model
             model_type = request.query_params.get('model', 'arima').lower()
             use_arima = model_type in ['auto', 'arima']
+
+            # Check if we should include backtest data
+            include_backtest = request.query_params.get('backtest', 'false').lower() == 'true'
 
             # Get confidence level parameter (default: 80)
             try:
@@ -117,7 +122,7 @@ class CurrencyPredictionView(APIView):
                 )
 
                 # Format response according to ADAGE 3.0
-                response_data = prediction_service.format_adage_response(prediction)
+                response_data = prediction_service.format_adage_response(prediction, include_backtest)
 
                 # Validate with serializer
                 serializer = CurrencyPredictionSerializer(data=response_data)
