@@ -52,6 +52,7 @@ class PredictionAttributesSerializer(serializers.Serializer):
     input_data_range = serializers.CharField()
     influencing_factors = PredictionFactorSerializer(many=True)
     prediction_values = PredictionValueSerializer(many=True)
+    backtest_values = PredictionValueSerializer(many=True, required=False)
 
     # Error metrics fields (backward compatibility)
     mean_square_error = serializers.FloatField(allow_null=True, required=False)
