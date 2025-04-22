@@ -199,7 +199,6 @@ class CurrencyPredictionView(APIView):
                     # Tracker to avoid duplicate emails
                     sent_alerts = set()
 
-
                     for prediction in prediction_values:
                         predicted_rate = abs(prediction['mean'])
                         prediction_day_raw = prediction['timestamp']
