@@ -65,9 +65,9 @@ class GraphView_lastmonth(View):
             # Example: Fetch data for the last month
             one_month_ago = datetime.now() - timedelta(days=31)
             table_name = f"historical_exchange_rate_{from_currency.lower()}_{to_currency.lower()}"
-            
+
             logger.info(f"Fetching data for {from_currency} to {to_currency} from table {table_name}")
-            
+
             with connection.cursor() as cursor:
                 cursor.execute(f"""
                     SELECT date, close FROM {table_name}
@@ -198,7 +198,7 @@ class GraphView_last5years(View):
             # Example: Fetch data for the last month
             five_years_ago = datetime.now() - timedelta(days=(365*5))
             table_name = f"historical_exchange_rate_{from_currency.lower()}_{to_currency.lower()}"
-            
+
             logger.info(f"Fetching data for {from_currency} to {to_currency} from table {table_name}")
 
             with connection.cursor() as cursor:
