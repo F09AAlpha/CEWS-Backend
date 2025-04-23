@@ -34,14 +34,17 @@ class PredictionService:
         self.alpha_vantage_service = AlphaVantageService()
         self.correlation_service = CorrelationService()
 
-    def get_latest_prediction(self, base_currency, target_currency, horizon_days=None):
+    def get_latest_prediction(
+            self, base_currency, target_currency, horizon_days=None
+            ):
         """
         Get the latest prediction for a currency pair.
 
         Args:
             base_currency (str): Base currency code
             target_currency (str): Target currency code
-            horizon_days (int, optional): Forecast horizon in days. Default is None (use latest).
+            horizon_days (int, optional): Forecast horizon in days.
+                Default is None (use latest).
 
         Returns:
             CurrencyPrediction: The latest prediction, or None if not found
@@ -83,19 +86,26 @@ class PredictionService:
         Args:
             base_currency (str): Base currency code (3 letters)
             target_currency (str): Target currency code (3 letters)
-            horizon_days (int, optional): Forecast horizon in days. Default is DEFAULT_FORECAST_HORIZON.
-            refresh (bool): Whether to refresh existing predictions. Default is False.
-            use_arima (bool): Whether to use ARIMA modeling. Default is True (recommended).
-            confidence_level (int): Confidence level for prediction intervals (50-99).
+            horizon_days (int, optional): Forecast horizon in days.
+                Default is DEFAULT_FORECAST_HORIZON.
+            refresh (bool): Whether to refresh existing predictions.
+                Default is False.
+            use_arima (bool): Whether to use ARIMA modeling.
+                Default is True (recommended).
+            confidence_level (int):
+            Confidence level for prediction intervals (50-99).
                 Default is 80 (recommended for realistic bounds).
                 Lower values (70-80) provide tighter, more precise bounds.
-                Higher values (90-99) provide wider bounds with more statistical confidence.
+                Higher values (90-99) provide
+                wider bounds with more statistical
+                confidence.
 
         Returns:
             CurrencyPrediction: The created prediction
 
         Raises:
-            ValueError: If currency codes are invalid or exchange rate data is not available
+            ValueError: If currency codes are invalid or exchange rate data
+                is not available
             AlphaVantageError: If there are issues with the Alpha Vantage API
         """
         try:
@@ -112,9 +122,15 @@ class PredictionService:
                 existing_prediction = self.get_latest_prediction(
                     base_currency, target_currency, horizon_days
                 )
-                # If we have a recent prediction (less than 24 hours old), return it
-                if existing_prediction and (timezone.now() - existing_prediction.prediction_date).total_seconds() < 86400:
-                    logger.info(f"Using existing prediction for {base_currency}/{target_currency}")
+                # If we have a recent prediction (less than 24 hours old),
+                # return it
+                if (existing_prediction and
+                        (timezone.now() - existing_prediction.prediction_date)
+                        .total_seconds() < 86400):
+                    logger.info(
+                        f"Using existing prediction for "
+                        f"{base_currency}/{target_currency}"
+                    )
                     return existing_prediction
 
             # Get historical exchange rate data - using data from Alpha Vantage
@@ -125,11 +141,20 @@ class PredictionService:
                 )
             except Exception as e:
                 logger.error(f"Failed to get real exchange rate data: {str(e)}")
-                raise ValueError(f"Could not obtain exchange rate data for {base_currency}/{target_currency}: {str(e)}")
+                raise ValueError(
+                    f"Could not obtain exchange rate data for "
+                    f"{base_currency}/{target_currency}: {str(e)}"
+                )
 
             if exchange_df.empty:
-                logger.error(f"No exchange rate data available for {base_currency}/{target_currency}")
-                raise ValueError(f"No exchange rate data available for {base_currency}/{target_currency}")
+                logger.error(
+                    f"No exchange rate data available for "
+                    f"{base_currency}/{target_currency}"
+                )
+                raise ValueError(
+                    f"No exchange rate data available for "
+                    f"{base_currency}/{target_currency}"
+                )
 
             # Get current rate (most recent closing price)
             current_rate = float(exchange_df.iloc[-1]['close'])
@@ -140,7 +165,10 @@ class PredictionService:
                 correlation_result = self.correlation_service.get_latest_correlation(
                     base_currency, target_currency
                 )
-                logger.info(f"Found correlation data for {base_currency}/{target_currency}")
+                logger.info(
+                    f"Found correlation data for "
+                    f"{base_currency}/{target_currency}"
+                )
             except Exception as e:
                 logger.warning(f"No correlation data available: {str(e)}")
 
@@ -150,31 +178,49 @@ class PredictionService:
 
             if use_arima:
                 try:
-                    logger.info(f"Attempting ARIMA model for {base_currency}/{target_currency}")
+                    logger.info(
+                        f"Attempting ARIMA model for "
+                        f"{base_currency}/{target_currency}"
+                    )
                     prediction_results = self._predict_with_arima_model(
                         exchange_df, correlation_result, horizon_days, confidence_level
                     )
 
                     if prediction_results is not None:
                         model_used = "ARIMA"
-                        logger.info(f"Successfully used ARIMA model for {base_currency}/{target_currency}")
+                        logger.info(
+                            f"Successfully used ARIMA model for "
+                            f"{base_currency}/{target_currency}"
+                        )
                     else:
                         logger.warning(
-                            f"ARIMA model returned None for {base_currency}/{target_currency}, "
+                            f"ARIMA model returned None for "
+                            f"{base_currency}/{target_currency}, "
                             f"falling back to statistical model"
                         )
                 except Exception as e:
-                    logger.error(f"Error using ARIMA model: {str(e)}. Traceback: {traceback.format_exc()}")
-                    logger.warning("Falling back to statistical model due to ARIMA error")
+                    logger.error(
+                        f"Error using ARIMA model: {str(e)}. "
+                        f"Traceback: {traceback.format_exc()}"
+                    )
+                    logger.warning(
+                        "Falling back to statistical model due to ARIMA error"
+                    )
             else:
-                logger.info(f"ARIMA model not requested for {base_currency}/{target_currency}")
+                logger.info(
+                    f"ARIMA model not requested for "
+                    f"{base_currency}/{target_currency}"
+                )
 
             # Fall back to statistical model if ARIMA wasn't used or failed
             if prediction_results is None:
                 prediction_results = self._predict_with_statistical_model(
                     exchange_df, correlation_result, horizon_days, confidence_level
                 )
-                logger.info(f"Generated prediction using Statistical Model for {base_currency}/{target_currency}")
+                logger.info(
+                    f"Generated prediction using Statistical Model for "
+                    f"{base_currency}/{target_currency}"
+                )
 
             # Calculate change percent from current rate to first prediction
             first_prediction = list(prediction_results['mean_predictions'].values())[0]
@@ -1219,16 +1265,16 @@ class PredictionService:
                     exchange_df = self.alpha_vantage_service.get_exchange_rates(
                         prediction.base_currency, prediction.target_currency, days=historical_days + 1
                     )
-                    
+
                     # Sort by date and get the last 7 days (excluding today)
                     exchange_df = exchange_df.sort_values('date')
                     historical_data = exchange_df.iloc[-historical_days-1:-1]
-                    
+
                     # Format dates and values
                     for _, row in historical_data.iterrows():
                         date_str = row['date'].strftime('%Y-%m-%d')
                         mean_value = float(row['close'])
-                        
+
                         # Calculate simple bounds for historical data
                         avg_volatility = 0.01  # 1% default volatility
                         if len(historical_data) > 3:
@@ -1236,20 +1282,20 @@ class PredictionService:
                             pct_changes = historical_data['close'].pct_change().dropna()
                             if not pct_changes.empty:
                                 avg_volatility = float(pct_changes.std())
-                        
+
                         # Set bounds at +/- volatility
                         lower_bound = mean_value * (1 - avg_volatility)
                         upper_bound = mean_value * (1 + avg_volatility)
-                        
+
                         backtest_values.append({
                             "timestamp": date_str,
                             "mean": mean_value,
                             "lower_bound": lower_bound,
                             "upper_bound": upper_bound
                         })
-                    
+
                     logger.info(f"Added {len(backtest_values)} historical data points for backtest")
-                    
+
                 except Exception as e:
                     logger.warning(f"Could not retrieve historical data for backtest: {str(e)}")
 
@@ -1265,7 +1311,7 @@ class PredictionService:
                 "influencing_factors": influencing_factors,
                 "prediction_values": prediction_values
             }
-            
+
             # Add backtest values if available
             if include_backtest and backtest_values:
                 attributes["backtest_values"] = backtest_values

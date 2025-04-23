@@ -5,7 +5,6 @@ import logging
 import re
 import traceback
 from django.utils import timezone
-from datetime import datetime, timedelta
 
 from myapp.Service.predictionService import PredictionService
 from myapp.Serializers.predictionSerializer import CurrencyPredictionSerializer
@@ -33,29 +32,34 @@ class CurrencyPredictionView(APIView):
         Query parameters:
         - refresh: Whether to refresh the prediction (default: false)
         - forecast_horizon: Number of days to forecast (default: 7)
-        - model: Model type to use - 'arima', 'statistical', or 'auto' (default: 'arima')
-        - confidence: Confidence level for prediction intervals (50-99, default: 80)
+        - model: Model type to use - 'arima', 'statistical', or 'auto'
+          (default: 'arima')
+        - confidence: Confidence level for prediction intervals (50-99,
+          default: 80)
           Lower values (e.g., 70-80) give tighter, more precise bounds
           Higher values (e.g., 90-95) give wider bounds with more certainty
-        - backtest: Whether to include historical data for the past 7 days (default: false)
+        - backtest: Whether to include historical data for the past 7 days
+          (default: false)
 
         Returns:
         - ADAGE 3.0 compliant prediction response
         """
         try:
             # Check if we should refresh the prediction
-            refresh_mode = request.query_params.get('refresh', 'false').lower() == 'true'
+            refresh_mode = request.query_params.get(
+                'refresh', 'false').lower() == 'true'
 
             # Check if we should use ARIMA model
             model_type = request.query_params.get('model', 'arima').lower()
             use_arima = model_type in ['auto', 'arima']
-
             # Check if we should include backtest data
-            include_backtest = request.query_params.get('backtest', 'false').lower() == 'true'
+            include_backtest = request.query_params.get(
+                'backtest', 'false').lower() == 'true'
 
             # Get confidence level parameter (default: 80)
             try:
-                confidence_level = int(request.query_params.get('confidence', 80))
+                confidence_level = int(
+                    request.query_params.get('confidence', 80))
                 if confidence_level < 50 or confidence_level > 99:
                     return self._error_response(
                         "InvalidParameter",
@@ -79,7 +83,8 @@ class CurrencyPredictionView(APIView):
 
             # Get forecast_horizon parameter (default: 7 days)
             try:
-                forecast_horizon = int(request.query_params.get('forecast_horizon', 7))
+                forecast_horizon = int(
+                    request.query_params.get('forecast_horizon', 7))
 
                 # Limit forecast horizon to reasonable range
                 if forecast_horizon < 1:
@@ -117,12 +122,14 @@ class CurrencyPredictionView(APIView):
                 # Get or create prediction
                 prediction = prediction_service.create_prediction(
                     base, target, forecast_horizon, refresh=refresh_mode,
-                    use_arima=use_arima if model_type != 'statistical' else False,
+                    use_arima=use_arima if model_type != 'statistical'
+                    else False,
                     confidence_level=confidence_level
                 )
-
                 # Format response according to ADAGE 3.0
-                response_data = prediction_service.format_adage_response(prediction, include_backtest)
+                response_data = prediction_service.format_adage_response(
+                    prediction, include_backtest
+                )
 
                 # Validate with serializer
                 serializer = CurrencyPredictionSerializer(data=response_data)
@@ -130,7 +137,9 @@ class CurrencyPredictionView(APIView):
                     return Response(serializer.data, headers=headers)
                 else:
                     # Log validation errors
-                    logger.error(f"Serializer validation error: {serializer.errors}")
+                    logger.error(
+                        f"Serializer validation error: {serializer.errors}"
+                    )
 
                     # ADAGE 3.0 compliant error response
                     return self._error_response(
@@ -139,9 +148,11 @@ class CurrencyPredictionView(APIView):
                         status.HTTP_500_INTERNAL_SERVER_ERROR,
                         details=serializer.errors
                     )
-
             except Exception as e:
-                logger.error(f"Error in prediction process: {str(e)}\n{traceback.format_exc()}")
+                logger.error(
+                    f"Error in prediction process: {str(e)}\n"
+                    f"{traceback.format_exc()}"
+                )
                 return self._error_response(
                     "PredictionError",
                     f"Error generating prediction: {str(e)}",
@@ -163,9 +174,10 @@ class CurrencyPredictionView(APIView):
                 str(e),
                 status.HTTP_400_BAD_REQUEST
             )
-
         except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}\n{traceback.format_exc()}")
+            logger.error(
+                f"Unexpected error: {str(e)}\n{traceback.format_exc()}"
+            )
             return self._error_response(
                 "ServerError",
                 "An unexpected error occurred",
@@ -183,7 +195,9 @@ class CurrencyPredictionView(APIView):
             InvalidCurrencyCode: If the code is not valid
         """
         if not re.match(r'^[A-Za-z]{3}$', code):
-            raise InvalidCurrencyCode("Currency codes must be 3 alphabetic characters")
+            raise InvalidCurrencyCode(
+                "Currency codes must be 3 alphabetic characters"
+                )
 
     def validate_currency_pair(self, base, target):
         """
@@ -197,7 +211,9 @@ class CurrencyPredictionView(APIView):
             InvalidCurrencyPair: If the base and target are the same
         """
         if base.upper() == target.upper():
-            raise InvalidCurrencyPair("Base and target currencies must be different")
+            raise InvalidCurrencyPair(
+                "Base and target currencies must be different"
+                )
 
     def _error_response(self, error_type, message, status_code, details=None):
         """
