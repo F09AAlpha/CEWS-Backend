@@ -27,7 +27,10 @@ class ModelAccuracySerializer(serializers.Serializer):
     mean_square_error = serializers.FloatField(allow_null=True)
     root_mean_square_error = serializers.FloatField(allow_null=True)
     mean_absolute_error = serializers.FloatField(allow_null=True)
-    description = serializers.CharField(default="Calculated from historical backtest", required=False)
+    description = serializers.CharField(
+        default="Calculated from historical backtest",
+        required=False
+    )
 
 
 class PredictionTimeObjectSerializer(serializers.Serializer):
@@ -52,11 +55,14 @@ class PredictionAttributesSerializer(serializers.Serializer):
     input_data_range = serializers.CharField()
     influencing_factors = PredictionFactorSerializer(many=True)
     prediction_values = PredictionValueSerializer(many=True)
+    backtest_values = PredictionValueSerializer(many=True, required=False)
 
     # Error metrics fields (backward compatibility)
     mean_square_error = serializers.FloatField(allow_null=True, required=False)
-    root_mean_square_error = serializers.FloatField(allow_null=True, required=False)
-    mean_absolute_error = serializers.FloatField(allow_null=True, required=False)
+    root_mean_square_error = serializers.FloatField(
+        allow_null=True, required=False)
+    mean_absolute_error = serializers.FloatField(
+        allow_null=True, required=False)
 
     # New structured accuracy metrics
     model_accuracy = ModelAccuracySerializer(required=False)

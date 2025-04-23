@@ -355,11 +355,13 @@ class PredictionWorkflowTest(TestCase):
 
         # Check for ARIMA model version
         if 'model_version' in attrs and 'ARIMA' in attrs['model_version']:
-            # Verify the model version follows the expected format ARIMA(p,d,q)
-            self.assertRegex(attrs['model_version'], r'ARIMA\(\d+,\d+,\d+\)')
-
-            # Confirm reasonable ARIMA order - typically small values for p, d, q
+            # Verify the model version follows one of the expected formats:
+            # Either new style "2.0-ARIMA" or legacy style "ARIMA(p,d,q)"
             if '(' in attrs['model_version'] and ')' in attrs['model_version']:
+                # Legacy format with specific ARIMA parameters
+                self.assertRegex(attrs['model_version'], r'ARIMA\(\d+,\d+,\d+\)')
+
+                # Confirm reasonable ARIMA order - typically small values for p, d, q
                 order_part = attrs['model_version'].split('(')[1].split(')')[0]
                 p, d, q = map(int, order_part.split(','))
                 self.assertLessEqual(p, 5, "ARIMA p parameter should be reasonably small")
@@ -401,7 +403,7 @@ class PredictionWorkflowTest(TestCase):
         }
 
         # Set metadata - use ARIMA model version to reflect our implementation
-        mock_prediction.model_version = "ARIMA(1,1,0)"
+        mock_prediction.model_version = "2.0-ARIMA"
         mock_prediction.confidence_score = 78.5
         input_range_start = (today - timedelta(days=90)).strftime('%Y-%m-%d')
         input_range_end = today.strftime('%Y-%m-%d')

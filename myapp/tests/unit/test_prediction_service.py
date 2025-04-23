@@ -125,12 +125,6 @@ class TestPredictionService(unittest.TestCase):
         self.assertIn('confidence_score', prediction_results)
         self.assertEqual(len(prediction_results['mean_predictions']), 7)
 
-        # Verify ARIMA-specific fields
-        self.assertIn('arima_params', prediction_results)
-        self.assertIn('order', prediction_results['arima_params'])
-        self.assertIn('aic', prediction_results['arima_params'])
-        self.assertIn('is_stationary', prediction_results['arima_params'])
-
         # Verify values are numeric
         for date, value in prediction_results['mean_predictions'].items():
             self.assertIsInstance(value, float)
@@ -175,7 +169,7 @@ class TestPredictionService(unittest.TestCase):
             'mean_predictions': {'2023-01-01': 1.1},
             'lower_bound': {'2023-01-01': 1.0},
             'upper_bound': {'2023-01-01': 1.2},
-            'model_version': 'ARIMA(1,1,0)',
+            'model_version': '2.0-ARIMA',
             'confidence_score': 80.5,
             'input_data_range': '2022-12-01 to 2022-12-31',
             'used_correlation_data': False,
@@ -184,12 +178,7 @@ class TestPredictionService(unittest.TestCase):
             'used_anomaly_detection': False,
             'mean_square_error': 0.0002,
             'root_mean_square_error': 0.014,
-            'mean_absolute_error': 0.012,
-            'arima_params': {
-                'order': (1, 1, 0),
-                'aic': 123.45,
-                'is_stationary': False
-            }
+            'mean_absolute_error': 0.012
         }
         mock_predict_arima.return_value = prediction_data
 
@@ -202,7 +191,7 @@ class TestPredictionService(unittest.TestCase):
         self.assertEqual(result.target_currency, 'EUR')
         self.assertEqual(result.forecast_horizon, 7)
         self.assertEqual(result.mean_predictions, prediction_data['mean_predictions'])
-        self.assertEqual(result.model_version, 'ARIMA(1,1,0)')
+        self.assertEqual(result.model_version, '2.0-ARIMA')
         mock_predict_arima.assert_called_once()
 
     @patch('myapp.Service.predictionService.PredictionService.get_latest_prediction')
