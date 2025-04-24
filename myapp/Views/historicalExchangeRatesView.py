@@ -6,7 +6,6 @@ import requests
 from django.db import connection, transaction
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework import status
 from dotenv import load_dotenv
 import psycopg2.extras
 import logging
@@ -122,7 +121,7 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
                 "attributes": {
                     "base": data["Meta Data"]["2. From Symbol"],
                     "target": data["Meta Data"]["3. To Symbol"],
-                    "data": formatted_data  
+                    "data": formatted_data
                 }
             }]
         }, status=status_code)
