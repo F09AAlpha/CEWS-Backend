@@ -16,8 +16,7 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 
-class FetchHistoricalCurrencyExchangeRates(APIView):
-
+class FetchHistoricalCurrencyExchangeRatesV2(APIView):
     def post(self, request, from_currency, to_currency, *args, **kwargs):
         API_URL = (
             f"https://www.alphavantage.co/query?function=FX_DAILY"
@@ -27,23 +26,31 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
         )
         try:
             response = requests.get(API_URL)
-            response.raise_for_status()
+            response.raise_for_status()  # This will raise an exception for HTTP errors (4xx or 5xx)
         except requests.exceptions.RequestException as e:
             logger.error(f"Error connecting to Alpha Vantage API: {str(e)}")
+            # Return 502 Bad Gateway on connection error
             return Response({"error": "Failed to fetch data from external API", "details": str(e)}, status=502)
 
         data = response.json()
+
+        # Check if the external API returned an error (e.g., invalid API key or other issues)
+        if "Error Message" in data or "Note" in data:
+            logger.error(f"Alpha Vantage API returned an error: {data.get('Error Message') or data.get('Note')}")
+            return Response({"error": "External API returned an error", "details": data.get('Error Message', data.get('Note'))}, status=502)
+
         time_series = data.get("Time Series FX (Daily)", {})
-        # Generate a table name based on currency pair
         table_name = f"historical_exchange_rate_{from_currency.lower()}_{to_currency.lower()}"
 
         will_insert = True
+        latest_date = None
+
+        if not time_series:
+            logger.error("Error fetching currency rates -- Invalid Currency")
+            # Return 502 on missing data from external API (instead of 400)
+            return Response({"error": "Failed to fetch valid data for the provided currencies"}, status=400)
 
         with connection.cursor() as cursor:
-            if not time_series:
-                logger.error("Error fetching currency rates -- Invalid Currency")
-                return Response({"error": "BAD REQUEST -- Currency not found"}, status=400)
-
             # Check if the table exists
             cursor.execute(f"""
                 SELECT EXISTS (
@@ -51,19 +58,15 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
                     WHERE table_name = '{table_name}'
                 )
             """)
-
             table_exists = cursor.fetchone()[0]
-            latest_date = None
 
             if table_exists:
-                # Get the latest date from the table
                 cursor.execute(f"SELECT MAX(date) FROM {table_name}")
                 latest_date = cursor.fetchone()[0]
 
                 if not time_series or (max(time_series.keys()) <= latest_date.isoformat()):
                     will_insert = False
 
-            # Create table if it doesn't exist
             if not table_exists:
                 will_insert = True
                 cursor.execute(f"""
@@ -77,7 +80,7 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
                     )
                 """)
 
-            # Prepare data for batch insert
+            # Prepare data for insertion
             batch_data = [
                 (date_str, rate_info.get("1. open"), rate_info.get("2. high"),
                  rate_info.get("3. low"), rate_info.get("4. close"))
@@ -86,8 +89,6 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
             ]
 
             status_code = 200
-
-            # Batch insert data
             if will_insert:
                 status_code = 201
                 with transaction.atomic():
@@ -100,21 +101,34 @@ class FetchHistoricalCurrencyExchangeRates(APIView):
                         """,
                         batch_data
                     )
-            return Response({
-                "data_source": "Alpha Vantage",
-                "dataset_type": "historical_currency_exchange_rate",
-                "dataset_id": f"currency-{from_currency}-{to_currency}-{datetime.now(pytz.UTC).strftime('%Y')}-2014",
-                "time_object": {"timestamp": datetime.now(pytz.UTC).strftime("%Y-%m-%d %H:%M:%S.%f"),
-                                "timezone": "UTC"},
-                "event": [{
-                    "event_type": "historical_currency_rates",
-                    "event_id": f"CE-{datetime.now(pytz.UTC).strftime('%Y%m%d')}-{uuid.uuid4().hex[:8]}",
-                    "attributes": {
-                        "base": data["Meta Data"]["2. From Symbol"],
-                        "target": data["Meta Data"]["3. To Symbol"],
-                        "data": data["Time Series FX (Daily)"]
-                        }
-                    }],
-                },
-                status=status_code
-            )
+
+        # Format data for return regardless of DB state
+        formatted_data = sorted([
+            {
+                "date": date_str,
+                "open": float(rate_info.get("1. open", 0)),
+                "high": float(rate_info.get("2. high", 0)),
+                "low": float(rate_info.get("3. low", 0)),
+                "close": float(rate_info.get("4. close", 0)),
+            }
+            for date_str, rate_info in time_series.items()
+        ], key=lambda x: x["date"])
+
+        return Response({
+            "data_source": "Alpha Vantage",
+            "dataset_type": "historical_currency_exchange_rate",
+            "dataset_id": f"currency-{from_currency}-{to_currency}-{datetime.now(pytz.UTC).strftime('%Y')}-2014",
+            "time_object": {
+                "timestamp": datetime.now(pytz.UTC).strftime("%Y-%m-%d %H:%M:%S.%f"),
+                "timezone": "UTC"
+            },
+            "event": [{
+                "event_type": "historical_currency_rates",
+                "event_id": f"CE-{datetime.now(pytz.UTC).strftime('%Y%m%d')}-{uuid.uuid4().hex[:8]}",
+                "attributes": {
+                    "base": data["Meta Data"]["2. From Symbol"],
+                    "target": data["Meta Data"]["3. To Symbol"],
+                    "data": formatted_data
+                }
+            }]
+        }, status=status_code)

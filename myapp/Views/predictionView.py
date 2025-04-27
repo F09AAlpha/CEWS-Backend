@@ -4,8 +4,14 @@ from rest_framework import status
 import logging
 import re
 import traceback
+from datetime import datetime
 from django.utils import timezone
-
+import os
+from django.db.models import Q
+from myapp.models import ExchangeRateAlert
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from myapp.Service.predictionService import PredictionService
 from myapp.Serializers.predictionSerializer import CurrencyPredictionSerializer
 from myapp.Exceptions.exceptions import (
@@ -14,6 +20,71 @@ from myapp.Exceptions.exceptions import (
 )
 
 logger = logging.getLogger(__name__)
+
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+
+
+def is_valid_email(email):
+    """
+    Simple email validation function using regex.
+    """
+    # Email regex pattern for basic validation
+    email_regex = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
+    return re.match(email_regex, email) is not None
+
+
+def send_alert_email(to_email, base, target, rate, alert_type, threshold, prediction_day):
+    """
+    Sends an email notification for an exchange rate alert.
+    """
+    # Log email sending attempt
+    logger.debug(f"Preparing to send email to {to_email} for {base}/{target} with rate {rate}")
+
+    if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
+        logger.error("Email credentials (EMAIL_HOST_USER or EMAIL_HOST_PASSWORD) are missing.")
+        return
+
+    if not to_email:
+        logger.error("Recipient email (to_email) is missing.")
+        return
+
+    if not is_valid_email(to_email):
+        logger.error(f"Invalid recipient email address: {to_email}")
+        return
+
+    # Log the fact that email credentials are used, but not their values
+    logger.debug(f"Email Host: {EMAIL_HOST_USER} (credentials used, but not displayed for security reasons)")
+
+    subject = f"Exchange Rate Prediction Alert: {base}/{target} on {prediction_day}"
+    body = (f"The exchange rate for {base}/{target} is predicted to "
+            f"{'rise above' if alert_type == 'above' else 'fall below'} {threshold}. Predicted rate: {rate} on {prediction_day}")
+
+    msg = MIMEMultipart()
+    msg["From"] = EMAIL_HOST_USER
+    msg["To"] = to_email
+    msg["Subject"] = subject
+    msg.attach(MIMEText(body, "plain"))
+
+    try:
+        # Start SMTP session
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+
+        # Log in to the email server
+        logger.debug("Attempting to log in to the SMTP server.")
+        server.login(EMAIL_HOST_USER, EMAIL_HOST_PASSWORD)
+
+        # Send the email
+        logger.debug(f"Sending email to {to_email}...")
+        server.sendmail(EMAIL_HOST_USER, to_email, msg.as_string())
+        server.quit()
+
+        logger.info(f"Alert email sent successfully to {to_email} for {base}/{target} with rate {rate}")
+    except smtplib.SMTPException as e:
+        logger.error(f"Failed to send alert email via SMTP: {str(e)}")
+    except Exception as e:
+        logger.error(f"Unexpected error in email sending: {str(e)}")
 
 
 class CurrencyPredictionView(APIView):
@@ -133,8 +204,49 @@ class CurrencyPredictionView(APIView):
 
                 # Validate with serializer
                 serializer = CurrencyPredictionSerializer(data=response_data)
+
                 if serializer.is_valid():
+                    event = serializer.data['events'][0]
+                    base = event['attributes']['base_currency']
+                    target = event['attributes']['target_currency']
+                    prediction_values = event['attributes']['prediction_values'][:3]  # First 3 days
+
+                    # Tracker to avoid duplicate emails
+                    sent_alerts = set()
+
+                    for prediction in prediction_values:
+                        predicted_rate = abs(prediction['mean'])
+                        prediction_day_raw = prediction['timestamp']
+                        dt = datetime.strptime(prediction_day_raw.replace("Z", ""), "%Y-%m-%dT%H:%M:%S")
+                        prediction_day = dt.strftime("%B %d, %Y")
+                        # Find matching alerts
+                        alerts = ExchangeRateAlert.objects.filter(
+                            base=base,
+                            target=target
+                        ).filter(
+                            Q(alert_type="above", threshold__lte=predicted_rate) |
+                            Q(alert_type="below", threshold__gte=predicted_rate)
+                        )
+
+                        for alert in alerts:
+                            if alert.alert_id in sent_alerts:
+                                continue  # Skip duplicate
+
+                            send_alert_email(
+                                alert.email,
+                                base,
+                                target,
+                                round(predicted_rate, 2),
+                                alert.alert_type,
+                                round(alert.threshold, 2),
+                                prediction_day
+                            )
+                            sent_alerts.add(alert.alert_id)  # Mark as sent
+                            logger.info(
+                                f"Alert triggered for {base}/{target} at predicted rate {predicted_rate} on {prediction_day} (threshold {alert.threshold})"
+                            )
                     return Response(serializer.data, headers=headers)
+
                 else:
                     # Log validation errors
                     logger.error(

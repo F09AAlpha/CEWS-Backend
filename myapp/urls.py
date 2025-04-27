@@ -5,6 +5,7 @@ from myapp.Views.financialNewsView import FetchFinancialNewsView
 from myapp.Views.currencyNewsView import CurrencyNewsListView, FetchCurrencyNewsView
 from myapp.Views.exchangeRateLatestViews import CurrencyRateView
 from myapp.Views.historicalExchangeRatesView import FetchHistoricalCurrencyExchangeRates
+from myapp.Views.historicalExchangeRatesViewV2 import FetchHistoricalCurrencyExchangeRatesV2
 from myapp.Views.volatilityView import VolatilityAnalysisView
 from myapp.Views.graphView import (GraphView_lastweek, GraphView_lastmonth,
                                    GraphView_last6months, GraphView_lastyear, GraphView_last5years)
@@ -12,6 +13,7 @@ from myapp.Views.registerExchangeRateAlertView import RegisterAlertView
 from myapp.Views.anomalyDetectionView import anomaly_detection
 from myapp.Views.correlationView import CorrelationAnalysisView
 from myapp.Views.predictionView import CurrencyPredictionView
+from myapp.Views.runDailyAlerts import RunDailyAlertChecks
 
 urlpatterns = [
     path('', HealthCheckView.as_view(), name='health-check'),
@@ -20,10 +22,16 @@ urlpatterns = [
     path('v1/news/events', CurrencyNewsListView.as_view(), name='currency-news-list'),
     path('v1/currency/rates/<str:base>/<str:target>/', CurrencyRateView.as_view(), name='currency-rate'),
     path('v2/alerts/register/', RegisterAlertView.as_view(), name='register-alert'),
+    path('v3/alerts/daily-check/', RunDailyAlertChecks.as_view(), name='run-daily-alert-checks'),
     path(
         'v1/currency/rates/<str:from_currency>/<str:to_currency>/historical',
         FetchHistoricalCurrencyExchangeRates.as_view(),
         name='fetch-historical-exchange-rates'
+    ),
+    path(
+        'v2/currency/rates/<str:from_currency>/<str:to_currency>/historical',
+        FetchHistoricalCurrencyExchangeRatesV2.as_view(),
+        name='fetch-historical-exchange-rates-v2'
     ),
     path(
         'v1/analytics/volatility/<str:base>/<str:target>/',
