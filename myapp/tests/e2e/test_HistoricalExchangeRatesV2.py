@@ -82,9 +82,8 @@ class HistoricalExchangeRatesV2EndToEndTest(APITestCase):
     def test_fetch_exchange_rates_v2_invalid_currency(self):
         """Test retrieval with invalid currencies"""
         invalid_url = reverse('fetch-historical-exchange-rates-v2', args=['INVALID', 'XXX'])
-        
+
         response = self.client.post(invalid_url)
 
         self.assertEqual(response.status_code, status.HTTP_502_BAD_GATEWAY)
         self.assertIn("error", response.data)
-
