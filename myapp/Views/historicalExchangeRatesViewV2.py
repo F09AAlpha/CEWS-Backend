@@ -18,7 +18,6 @@ load_dotenv()
 
 
 class FetchHistoricalCurrencyExchangeRatesV2(APIView):
-
     def post(self, request, from_currency, to_currency, *args, **kwargs):
         API_URL = (
             f"https://www.alphavantage.co/query?function=FX_DAILY"
@@ -28,12 +27,19 @@ class FetchHistoricalCurrencyExchangeRatesV2(APIView):
         )
         try:
             response = requests.get(API_URL)
-            response.raise_for_status()
+            response.raise_for_status()  # This will raise an exception for HTTP errors (4xx or 5xx)
         except requests.exceptions.RequestException as e:
             logger.error(f"Error connecting to Alpha Vantage API: {str(e)}")
+            # Return 502 Bad Gateway on connection error
             return Response({"error": "Failed to fetch data from external API", "details": str(e)}, status=502)
 
         data = response.json()
+
+        # Check if the external API returned an error (e.g., invalid API key or other issues)
+        if "Error Message" in data or "Note" in data:
+            logger.error(f"Alpha Vantage API returned an error: {data.get('Error Message') or data.get('Note')}")
+            return Response({"error": "External API returned an error", "details": data.get('Error Message', data.get('Note'))}, status=502)
+
         time_series = data.get("Time Series FX (Daily)", {})
         table_name = f"historical_exchange_rate_{from_currency.lower()}_{to_currency.lower()}"
 
@@ -42,7 +48,8 @@ class FetchHistoricalCurrencyExchangeRatesV2(APIView):
 
         if not time_series:
             logger.error("Error fetching currency rates -- Invalid Currency")
-            return Response({"error": "BAD REQUEST -- Currency not found"}, status=400)
+            # Return 502 on missing data from external API (instead of 400)
+            return Response({"error": "Failed to fetch valid data for the provided currencies"}, status=400)
 
         with connection.cursor() as cursor:
             # Check if the table exists
