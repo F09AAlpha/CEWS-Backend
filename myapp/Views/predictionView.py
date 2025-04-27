@@ -85,6 +85,8 @@ def send_alert_email(to_email, base, target, rate, alert_type, threshold, predic
         logger.error(f"Failed to send alert email via SMTP: {str(e)}")
     except Exception as e:
         logger.error(f"Unexpected error in email sending: {str(e)}")
+
+
 class CurrencyPredictionView(APIView):
     """
     API endpoint for currency exchange rate prediction compliant with ADAGE 3.0
@@ -229,7 +231,7 @@ class CurrencyPredictionView(APIView):
                         for alert in alerts:
                             if alert.alert_id in sent_alerts:
                                 continue  # Skip duplicate
-                                    
+
                             send_alert_email(
                                 alert.email,
                                 base,

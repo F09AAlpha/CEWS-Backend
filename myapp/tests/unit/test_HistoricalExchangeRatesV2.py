@@ -1,14 +1,12 @@
 from django.test import TestCase
 from unittest.mock import patch
-from datetime import datetime
 from rest_framework.test import APIRequestFactory
 from rest_framework import status
 from django.urls import reverse
-import pytz
-import json
 import requests
 
 from myapp.Views.historicalExchangeRatesViewV2 import FetchHistoricalCurrencyExchangeRatesV2  # adjust import
+
 
 class FetchHistoricalCurrencyExchangeRatesV2Test(TestCase):
     """Unit tests for FetchHistoricalCurrencyExchangeRatesV2"""
@@ -104,4 +102,3 @@ class FetchHistoricalCurrencyExchangeRatesV2Test(TestCase):
         event_data = response.data['event'][0]['attributes']['data']
         self.assertEqual(len(event_data), 1)
         self.assertEqual(event_data[0]['high'], 0.0)  # default to 0.0 for missing fields
-
